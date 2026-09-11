@@ -1,0 +1,10 @@
+numpy>=2.0,<3
+pandas>=2.2,<3
+scipy>=1.13,<2
+plotly>=5.24,<7
+matplotlib>=3.9,<4
+streamlit>=1.39,<2
+nbformat>=5.10,<6
+nbclient>=0.10,<1
+reportlab>=4.2,<5
+pytest>=8.3,<10
