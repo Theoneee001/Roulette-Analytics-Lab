@@ -63,7 +63,7 @@ def validate_probability_vector(probabilities: ArrayLike, size: int) -> np.ndarr
         raise ValueError(f"Expected {size} pocket probabilities.")
     if np.any(~np.isfinite(values)) or np.any(values < 0):
         raise ValueError("Pocket probabilities must be finite and non-negative.")
-    if not np.isclose(values.sum(), 1.0, atol=1e-12):
+    if not np.isclose(values.sum(), 1.0, rtol=0.0, atol=1e-12):
         raise ValueError("Pocket probabilities must sum to one.")
     values.setflags(write=False)
     return values

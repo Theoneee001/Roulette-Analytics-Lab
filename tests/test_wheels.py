@@ -45,6 +45,13 @@ def test_biased_wheel_rejects_invalid_probabilities():
         make_biased_wheel(WheelKind.EUROPEAN, np.full(37, 0.02))
 
 
+def test_biased_wheel_rejects_materially_non_unit_probability_mass():
+    probabilities = np.full(37, 0.999991 / 37)
+
+    with pytest.raises(ValueError, match="sum to one"):
+        make_biased_wheel(WheelKind.EUROPEAN, probabilities)
+
+
 def test_biased_wheel_preserves_valid_probability_vector():
     probabilities = np.full(37, 1 / 37)
     wheel = make_biased_wheel(WheelKind.EUROPEAN, probabilities)
