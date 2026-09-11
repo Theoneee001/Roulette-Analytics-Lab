@@ -707,7 +707,7 @@ For each row in `docs/deliverables_checklist.md`, link to concrete evidence. Req
 
 - [ ] **Step 5: Create and verify the V1 review package**
 
-Create the Git archive `deliverables/Roulette_Analytics_Lab_V1.zip`, excluding `.git`, virtual environments, caches, and the unapproved group PDF. Record the exact source commit in `deliverables/V1_MANIFEST.txt`, run `unzip -t`, and add the archive's SHA-256 checksum to the manifest. Run the full test and verifier gate once more after packaging.
+Create the Git archive `deliverables/Roulette_Analytics_Lab_V1.zip`, excluding `.git`, virtual environments, caches, and the unapproved group PDF. After the archive is final, create the sidecar file `deliverables/V1_MANIFEST.txt` containing the exact source commit and archive SHA-256 checksum; do not place this self-referential manifest inside the ZIP. Run `unzip -t`, then run the full test and verifier gate once more after packaging.
 
 Commit: `release: prepare roulette analytics lab v1`
 
