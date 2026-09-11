@@ -199,6 +199,20 @@ def test_en_prison_rejects_a_wheel_where_a_zero_stake_never_settles():
         expected_net_return(wheel, bet, SpecialRule.EN_PRISON)
 
 
+def test_en_prison_accepts_a_near_degenerate_wheel_that_can_settle():
+    remaining_probability = 1e-13
+    probabilities = np.zeros(37)
+    probabilities[0] = 1.0 - remaining_probability
+    probabilities[1] = remaining_probability
+    wheel = make_biased_wheel(WheelKind.EUROPEAN, probabilities)
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+
+    result = expected_net_return(wheel, bet, SpecialRule.EN_PRISON)
+
+    assert np.isfinite(result)
+    assert result == pytest.approx(remaining_probability)
+
+
 @pytest.mark.parametrize(
     ("probability", "net_odds", "fraction", "expected"),
     [

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from math import isclose, isfinite
+from math import isfinite
 
 from .wheels import WheelKind, WheelSpec
 
@@ -266,7 +266,7 @@ def _validate_european_even_money_rule(
 def _en_prison_expected_return(
     win_probability: float, zero_probability: float, state: EnPrisonState
 ) -> float:
-    if isclose(zero_probability, 1.0, rel_tol=0.0, abs_tol=1e-12):
+    if zero_probability == 1.0:
         raise ValueError("En Prison stake never settles when zero has all probability mass.")
     non_zero_loss_probability = 1 - win_probability - zero_probability
     if state is EnPrisonState.ACTIVE:
