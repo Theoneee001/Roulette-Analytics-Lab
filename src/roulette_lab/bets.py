@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from math import isfinite
+from math import isclose, isfinite
 
 from .wheels import WheelKind, WheelSpec
 
@@ -117,8 +117,9 @@ def make_standard_bet(
             raise ValueError(f"{kind.value} requires {required_size} labels.")
         covered_labels = selection
 
-    _validate_numbered_coverage(covered_labels, wheel)
-    return BetSpec(kind=kind, covered_labels=covered_labels, net_odds=_PAYOUTS[kind])
+    bet = BetSpec(kind=kind, covered_labels=covered_labels, net_odds=_PAYOUTS[kind])
+    _validate_bet_for_wheel(wheel, bet)
+    return bet
 
 
 def expected_net_return(
@@ -126,7 +127,11 @@ def expected_net_return(
 ) -> float:
     """Return expected profit or loss per one-unit initial stake."""
     rule = SpecialRule(rule)
-    probabilities = _probabilities_for_bet(wheel, bet)
+    _validate_bet_for_wheel(wheel, bet)
+    probabilities = {
+        label: float(probability)
+        for label, probability in zip(wheel.labels, wheel.probabilities)
+    }
     win_probability = sum(probabilities[label] for label in bet.covered_labels)
     zero_probability = sum(
         probability for label, probability in probabilities.items() if label in {"0", "00"}
@@ -191,24 +196,64 @@ def _outside_coverage(kind: BetKind, wheel: WheelSpec) -> tuple[str, ...]:
     return tuple(str(number) for number in numbers if number >= 19)
 
 
-def _validate_numbered_coverage(labels: tuple[str, ...], wheel: WheelSpec) -> None:
-    if len(set(labels)) != len(labels):
-        raise ValueError("Bet coverage labels must be unique.")
-    numbered_pockets = set(wheel.labels) - {"0", "00"}
-    invalid_labels = set(labels) - numbered_pockets
-    if invalid_labels:
-        raise ValueError("Bet coverage must contain only numbered pocket labels.")
+def _validate_bet_for_wheel(wheel: WheelSpec, bet: BetSpec) -> None:
+    labels = frozenset(bet.covered_labels)
+    if bet.kind is BetKind.STRAIGHT:
+        if labels - set(wheel.labels):
+            raise ValueError("Straight bet labels must be present on the wheel.")
+        return
+
+    if bet.kind in _OUTSIDE_BETS:
+        if labels != frozenset(_outside_coverage(bet.kind, wheel)):
+            raise ValueError(f"{bet.kind.value} coverage must match the standard wheel coverage.")
+        return
+
+    numbered_labels = frozenset(str(number) for number in range(1, 37))
+    if not labels <= numbered_labels or not labels <= set(wheel.labels):
+        raise ValueError(
+            "Non-straight inside bets must contain labels 1 through 36 present on the wheel."
+        )
+    numbers = frozenset(int(label) for label in labels)
+    if not _is_canonical_geometry(bet.kind, numbers):
+        raise ValueError(f"Bet coverage does not form a valid {bet.kind.value} geometry.")
 
 
-def _probabilities_for_bet(wheel: WheelSpec, bet: BetSpec) -> dict[str, float]:
-    labels = set(bet.covered_labels)
-    missing_labels = labels - set(wheel.labels)
-    if missing_labels:
-        raise ValueError("Bet coverage contains labels not present on the wheel.")
-    return {
-        label: float(probability)
-        for label, probability in zip(wheel.labels, wheel.probabilities)
-    }
+def _is_canonical_geometry(kind: BetKind, numbers: frozenset[int]) -> bool:
+    if kind is BetKind.SPLIT:
+        first, second = sorted(numbers)
+        same_row = (first - 1) // 3 == (second - 1) // 3 and second - first == 1
+        same_column = first % 3 == second % 3 and second - first == 3
+        return same_row or same_column
+    if kind is BetKind.STREET:
+        row = (min(numbers) - 1) // 3
+        return numbers == frozenset(range(3 * row + 1, 3 * row + 4))
+    if kind is BetKind.CORNER:
+        rows = {(number - 1) // 3 for number in numbers}
+        columns = {(number - 1) % 3 for number in numbers}
+        return (
+            len(rows) == 2
+            and len(columns) == 2
+            and max(rows) - min(rows) == 1
+            and max(columns) - min(columns) == 1
+            and numbers
+            == frozenset(3 * row + column + 1 for row in rows for column in columns)
+        )
+    if kind is BetKind.SIX_LINE:
+        rows = {(number - 1) // 3 for number in numbers}
+        return len(rows) == 2 and max(rows) - min(rows) == 1
+    if kind is BetKind.DOZEN:
+        return numbers in {
+            frozenset(range(1, 13)),
+            frozenset(range(13, 25)),
+            frozenset(range(25, 37)),
+        }
+    if kind is BetKind.COLUMN:
+        return numbers in {
+            frozenset(range(1, 37, 3)),
+            frozenset(range(2, 37, 3)),
+            frozenset(range(3, 37, 3)),
+        }
+    return False
 
 
 def _validate_european_even_money_rule(
@@ -221,6 +266,8 @@ def _validate_european_even_money_rule(
 def _en_prison_expected_return(
     win_probability: float, zero_probability: float, state: EnPrisonState
 ) -> float:
+    if isclose(zero_probability, 1.0, rel_tol=0.0, abs_tol=1e-12):
+        raise ValueError("En Prison stake never settles when zero has all probability mass.")
     non_zero_loss_probability = 1 - win_probability - zero_probability
     if state is EnPrisonState.ACTIVE:
         return (

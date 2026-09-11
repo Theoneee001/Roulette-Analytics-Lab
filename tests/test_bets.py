@@ -1,14 +1,16 @@
+import numpy as np
 import pytest
 
 from roulette_lab.bets import (
     BetKind,
+    BetSpec,
     SpecialRule,
     expected_net_return,
     house_edge,
     kelly_fraction,
     make_standard_bet,
 )
-from roulette_lab.wheels import WheelKind, make_fair_wheel
+from roulette_lab.wheels import WheelKind, make_biased_wheel, make_fair_wheel
 
 
 @pytest.mark.parametrize(
@@ -43,7 +45,7 @@ def test_kelly_requires_probability_above_break_even():
         (BetKind.STRAIGHT, ("17",), 35),
         (BetKind.SPLIT, ("17", "18"), 17),
         (BetKind.STREET, ("16", "17", "18"), 11),
-        (BetKind.CORNER, ("16", "17", "18", "19"), 8),
+        (BetKind.CORNER, ("16", "17", "19", "20"), 8),
         (BetKind.SIX_LINE, ("13", "14", "15", "16", "17", "18"), 5),
         (BetKind.DOZEN, tuple(str(number) for number in range(1, 13)), 2),
         (BetKind.COLUMN, tuple(str(number) for number in range(1, 37, 3)), 2),
@@ -88,11 +90,75 @@ def test_standard_bets_reject_wrong_selection_size():
         make_standard_bet(BetKind.SPLIT, ("17",), wheel)
 
 
-def test_standard_bets_reject_labels_outside_numbered_pockets():
+@pytest.mark.parametrize(
+    ("wheel_kind", "label"),
+    [(WheelKind.EUROPEAN, "0"), (WheelKind.AMERICAN, "0"), (WheelKind.AMERICAN, "00")],
+)
+def test_straight_bets_accept_zero_pockets_present_on_the_wheel(wheel_kind, label):
+    wheel = make_fair_wheel(wheel_kind)
+
+    bet = make_standard_bet(BetKind.STRAIGHT, (label,), wheel)
+
+    assert bet.covered_labels == (label,)
+
+
+def test_straight_bets_reject_zero_pockets_absent_from_the_wheel():
     wheel = make_fair_wheel(WheelKind.EUROPEAN)
 
-    with pytest.raises(ValueError, match="numbered pocket"):
-        make_standard_bet(BetKind.STRAIGHT, ("0",), wheel)
+    with pytest.raises(ValueError, match="present on the wheel"):
+        make_standard_bet(BetKind.STRAIGHT, ("00",), wheel)
+
+
+@pytest.mark.parametrize(
+    ("kind", "selection"),
+    [
+        (BetKind.SPLIT, ("17", "19")),
+        (BetKind.STREET, ("16", "17", "19")),
+        (BetKind.CORNER, ("16", "17", "18", "19")),
+        (BetKind.SIX_LINE, ("13", "14", "15", "19", "20", "21")),
+        (BetKind.DOZEN, tuple(str(number) for number in range(1, 12)) + ("13",)),
+        (BetKind.COLUMN, tuple(str(number) for number in range(1, 13))),
+    ],
+)
+def test_standard_bets_reject_noncanonical_geometries(kind, selection):
+    wheel = make_fair_wheel(WheelKind.EUROPEAN)
+
+    with pytest.raises(ValueError, match="valid"):
+        make_standard_bet(kind, selection, wheel)
+
+
+def test_expected_return_revalidates_directly_constructed_bet_geometry():
+    wheel = make_fair_wheel(WheelKind.EUROPEAN)
+    invalid_corner = BetSpec(BetKind.CORNER, ("16", "17", "18", "19"), 8)
+
+    with pytest.raises(ValueError, match="valid corner"):
+        expected_net_return(wheel, invalid_corner, SpecialRule.STANDARD)
+
+
+def test_expected_return_revalidates_direct_straight_bet_wheel_membership():
+    wheel = make_fair_wheel(WheelKind.EUROPEAN)
+    double_zero = BetSpec(BetKind.STRAIGHT, ("00",), 35)
+
+    with pytest.raises(ValueError, match="present on the wheel"):
+        expected_net_return(wheel, double_zero, SpecialRule.STANDARD)
+
+
+def test_expected_return_rejects_zero_in_a_direct_nonstraight_inside_bet():
+    wheel = make_fair_wheel(WheelKind.EUROPEAN)
+    invalid_split = BetSpec(BetKind.SPLIT, ("0", "1"), 17)
+
+    with pytest.raises(ValueError, match="1 through 36"):
+        expected_net_return(wheel, invalid_split, SpecialRule.STANDARD)
+
+
+def test_expected_return_revalidates_direct_outside_bet_coverage():
+    wheel = make_fair_wheel(WheelKind.EUROPEAN)
+    non_red_coverage = BetSpec(
+        BetKind.RED, tuple(str(number) for number in range(1, 19)), 1
+    )
+
+    with pytest.raises(ValueError, match="standard wheel coverage"):
+        expected_net_return(wheel, non_red_coverage, SpecialRule.STANDARD)
 
 
 @pytest.mark.parametrize(
@@ -121,6 +187,16 @@ def test_en_prison_is_a_deferred_settlement_with_half_zero_loss_in_expectation()
         -1 / 74
     )
     assert house_edge(wheel, bet, SpecialRule.EN_PRISON) == pytest.approx(1 / 74)
+
+
+def test_en_prison_rejects_a_wheel_where_a_zero_stake_never_settles():
+    probabilities = np.zeros(37)
+    probabilities[0] = 1.0
+    wheel = make_biased_wheel(WheelKind.EUROPEAN, probabilities)
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+
+    with pytest.raises(ValueError, match="never settles"):
+        expected_net_return(wheel, bet, SpecialRule.EN_PRISON)
 
 
 @pytest.mark.parametrize(
