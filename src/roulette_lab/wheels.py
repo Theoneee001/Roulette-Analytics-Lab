@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
+from numbers import Real
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -102,4 +103,36 @@ def make_biased_wheel(kind: WheelKind, probabilities: ArrayLike) -> WheelSpec:
         labels=tuple(pocket.label for pocket in pockets),
         colours=tuple(pocket.colour for pocket in pockets),
         probabilities=validated,
+    )
+
+
+def wheel_with_single_pocket_probability(
+    base_wheel: WheelSpec, label: str, probability: float
+) -> WheelSpec:
+    """Set one pocket probability while preserving every other relative weight."""
+
+    if not isinstance(base_wheel, WheelSpec):
+        raise TypeError("base_wheel must be a WheelSpec.")
+    if not isinstance(label, str) or label not in base_wheel.labels:
+        raise ValueError("label must identify a pocket on base_wheel.")
+    if isinstance(probability, bool) or not isinstance(probability, Real):
+        raise ValueError("probability must be a finite number strictly between zero and one.")
+    probability = float(probability)
+    if not np.isfinite(probability) or not 0.0 < probability < 1.0:
+        raise ValueError("probability must be a finite number strictly between zero and one.")
+
+    target_index = base_wheel.labels.index(label)
+    other_probabilities = np.delete(base_wheel.probabilities, target_index)
+    other_mass = float(other_probabilities.sum())
+    if other_mass <= 0.0:
+        raise ValueError("Cannot redistribute a wheel with no probability outside label.")
+
+    adjusted = np.array(base_wheel.probabilities, dtype=float, copy=True)
+    adjusted[target_index] = probability
+    adjusted[np.arange(len(adjusted)) != target_index] *= (1.0 - probability) / other_mass
+    return WheelSpec(
+        kind=base_wheel.kind,
+        labels=base_wheel.labels,
+        colours=base_wheel.colours,
+        probabilities=adjusted,
     )

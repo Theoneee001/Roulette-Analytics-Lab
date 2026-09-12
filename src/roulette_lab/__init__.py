@@ -17,16 +17,21 @@ from .wheels import (
     make_biased_wheel,
     make_fair_wheel,
     validate_probability_vector,
+    wheel_with_single_pocket_probability,
 )
+from .io import SpinDataset, read_spin_csv, write_spin_csv
 from .statistics import (
     FairnessResult,
     MaxCountResult,
     PosteriorEstimate,
+    PowerEstimate,
     chi_square_fairness,
     dirichlet_posterior,
     max_count_test,
     monte_carlo_global_pvalue,
     split_spin_history,
+    estimate_detection_power,
+    simulate_spin_counts,
 )
 
 __all__ = [
@@ -37,9 +42,11 @@ __all__ = [
     "MaxCountResult",
     "Pocket",
     "PosteriorEstimate",
+    "PowerEstimate",
     "SpecialRule",
     "WheelKind",
     "WheelSpec",
+    "SpinDataset",
     "expected_net_return",
     "house_edge",
     "kelly_fraction",
@@ -50,6 +57,11 @@ __all__ = [
     "make_standard_bet",
     "max_count_test",
     "monte_carlo_global_pvalue",
+    "estimate_detection_power",
+    "read_spin_csv",
+    "simulate_spin_counts",
     "split_spin_history",
     "validate_probability_vector",
+    "wheel_with_single_pocket_probability",
+    "write_spin_csv",
 ]

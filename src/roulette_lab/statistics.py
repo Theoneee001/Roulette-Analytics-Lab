@@ -1,6 +1,7 @@
 """Fairness and selection-aware bias analyses for roulette spin counts."""
 
 from dataclasses import dataclass
+import json
 from numbers import Integral, Real
 
 import numpy as np
@@ -46,6 +47,44 @@ class PosteriorEstimate:
     level: float
 
 
+@dataclass(frozen=True, slots=True)
+class PowerEstimate:
+    """Monte Carlo power for a declared global Pearson chi-square test."""
+
+    estimated_power: float
+    monte_carlo_standard_error: float
+    spins: int
+    experiments: int
+    alpha: float
+    decision_rule: str
+    rng_bit_generator: str
+    rng_state: str
+
+    @property
+    def power(self) -> float:
+        """Alias for the estimated rejection probability."""
+
+        return self.estimated_power
+
+    @property
+    def monte_carlo_se(self) -> float:
+        """Alias for the Monte Carlo standard error."""
+
+        return self.monte_carlo_standard_error
+
+    @property
+    def sample_size(self) -> int:
+        """Number of spins in each simulated experiment."""
+
+        return self.spins
+
+    @property
+    def experiment_count(self) -> int:
+        """Number of independently simulated experiments."""
+
+        return self.experiments
+
+
 def _validated_wheel(wheel: WheelSpec) -> WheelSpec:
     if not isinstance(wheel, WheelSpec):
         raise TypeError("wheel must be a WheelSpec.")
@@ -81,10 +120,32 @@ def _validated_simulations(simulations: int) -> int:
     return int(simulations)
 
 
+def _validated_positive_integer(value: int, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, Integral) or value <= 0:
+        raise ValueError(f"{name} must be a positive integer.")
+    return int(value)
+
+
 def _validated_rng(rng: np.random.Generator) -> np.random.Generator:
     if not isinstance(rng, np.random.Generator):
         raise TypeError("rng must be a numpy.random.Generator.")
     return rng
+
+
+def _rng_state_json(rng: np.random.Generator) -> str:
+    def encode_numpy(value: object) -> object:
+        if isinstance(value, np.ndarray):
+            return value.tolist()
+        if isinstance(value, np.integer):
+            return int(value)
+        raise TypeError(f"Unsupported random-generator state value: {type(value)!r}")
+
+    return json.dumps(
+        rng.bit_generator.state,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=encode_numpy,
+    )
 
 
 def _validated_probability_input(value: float, name: str) -> float:
@@ -252,3 +313,60 @@ def split_spin_history(
     is_validation = np.zeros(values.size, dtype=bool)
     is_validation[validation_indices] = True
     return values[~is_validation], values[is_validation]
+
+
+def simulate_spin_counts(
+    wheel: WheelSpec, spins: int, rng: np.random.Generator
+) -> NDArray[np.int64]:
+    """Simulate one spin-count vector from ``wheel`` with an explicit generator."""
+
+    wheel = _validated_wheel(wheel)
+    spins = _validated_positive_integer(spins, "spins")
+    rng = _validated_rng(rng)
+    return rng.multinomial(spins, wheel.probabilities).astype(np.int64, copy=False)
+
+
+def estimate_detection_power(
+    null_wheel: WheelSpec,
+    alternative_wheel: WheelSpec,
+    spins: int,
+    alpha: float,
+    experiments: int,
+    rng: np.random.Generator,
+) -> PowerEstimate:
+    """Estimate rejection probability for a global Pearson chi-square test.
+
+    Every experiment uses the same upper-tail chi-square critical value under
+    ``null_wheel``; samples are drawn only from ``alternative_wheel``.
+    """
+
+    null_wheel = _validated_wheel(null_wheel)
+    alternative_wheel = _validated_wheel(alternative_wheel)
+    if null_wheel.labels != alternative_wheel.labels:
+        raise ValueError("null_wheel and alternative_wheel must have identical labels.")
+    if np.any(null_wheel.probabilities <= 0.0):
+        raise ValueError("null_wheel probabilities must all be positive for Pearson testing.")
+    spins = _validated_positive_integer(spins, "spins")
+    alpha = _validated_probability_input(alpha, "alpha")
+    experiments = _validated_positive_integer(experiments, "experiments")
+    rng = _validated_rng(rng)
+    rng_state = _rng_state_json(rng)
+
+    expected_counts = spins * null_wheel.probabilities
+    samples = rng.multinomial(spins, alternative_wheel.probabilities, size=experiments)
+    statistics = np.sum((samples - expected_counts) ** 2 / expected_counts, axis=1)
+    critical_value = scipy.stats.chi2.isf(alpha, len(null_wheel.labels) - 1)
+    estimated_power = float(np.mean(statistics >= critical_value))
+    standard_error = float(
+        np.sqrt(estimated_power * (1.0 - estimated_power) / experiments)
+    )
+    return PowerEstimate(
+        estimated_power=estimated_power,
+        monte_carlo_standard_error=standard_error,
+        spins=spins,
+        experiments=experiments,
+        alpha=alpha,
+        decision_rule="Global Pearson chi-square goodness-of-fit, upper-tail chi-square critical value.",
+        rng_bit_generator=type(rng.bit_generator).__name__,
+        rng_state=rng_state,
+    )
