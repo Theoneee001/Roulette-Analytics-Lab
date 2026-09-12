@@ -132,9 +132,15 @@ def expected_net_return(
         label: float(probability)
         for label, probability in zip(wheel.labels, wheel.probabilities)
     }
+    covered_labels = frozenset(bet.covered_labels)
     win_probability = sum(probabilities[label] for label in bet.covered_labels)
     zero_probability = sum(
         probability for label, probability in probabilities.items() if label in {"0", "00"}
+    )
+    non_zero_loss_probability = sum(
+        probability
+        for label, probability in probabilities.items()
+        if label not in covered_labels and label not in {"0", "00"}
     )
 
     if rule is SpecialRule.STANDARD:
@@ -142,14 +148,16 @@ def expected_net_return(
 
     _validate_european_even_money_rule(wheel, bet, rule)
     if rule is SpecialRule.LA_PARTAGE:
-        non_zero_loss_probability = 1 - win_probability - zero_probability
         return (
             win_probability * bet.net_odds
             - non_zero_loss_probability
             - 0.5 * zero_probability
         )
     return _en_prison_expected_return(
-        win_probability, zero_probability, EnPrisonState.ACTIVE
+        win_probability,
+        non_zero_loss_probability,
+        zero_probability,
+        EnPrisonState.ACTIVE,
     )
 
 
@@ -264,20 +272,26 @@ def _validate_european_even_money_rule(
 
 
 def _en_prison_expected_return(
-    win_probability: float, zero_probability: float, state: EnPrisonState
+    win_probability: float,
+    non_zero_loss_probability: float,
+    zero_probability: float,
+    state: EnPrisonState,
 ) -> float:
-    if zero_probability == 1.0:
+    settlement_probability = win_probability + non_zero_loss_probability
+    if settlement_probability == 0.0:
         raise ValueError("En Prison stake never settles when zero has all probability mass.")
-    non_zero_loss_probability = 1 - win_probability - zero_probability
     if state is EnPrisonState.ACTIVE:
         return (
             win_probability
             - non_zero_loss_probability
             + zero_probability
             * _en_prison_expected_return(
-                win_probability, zero_probability, EnPrisonState.IMPRISONED
+                win_probability,
+                non_zero_loss_probability,
+                zero_probability,
+                EnPrisonState.IMPRISONED,
             )
         )
 
     # A zero while imprisoned leaves the stake imprisoned, creating this loop.
-    return -non_zero_loss_probability / (1 - zero_probability)
+    return -non_zero_loss_probability / settlement_probability

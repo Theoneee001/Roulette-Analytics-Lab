@@ -213,6 +213,29 @@ def test_en_prison_accepts_a_near_degenerate_wheel_that_can_settle():
     assert result == pytest.approx(remaining_probability)
 
 
+def test_en_prison_stably_handles_tiny_win_and_loss_settlement_masses():
+    win_probability = 1e-13
+    non_zero_loss_probability = 2e-13
+    zero_probability = 1.0 - win_probability - non_zero_loss_probability
+    probabilities = np.zeros(37)
+    probabilities[0] = zero_probability
+    probabilities[1] = win_probability
+    probabilities[2] = non_zero_loss_probability
+    wheel = make_biased_wheel(WheelKind.EUROPEAN, probabilities)
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+
+    result = expected_net_return(wheel, bet, SpecialRule.EN_PRISON)
+    expected = (
+        win_probability
+        - non_zero_loss_probability
+        - zero_probability
+        * non_zero_loss_probability
+        / (win_probability + non_zero_loss_probability)
+    )
+
+    assert result == pytest.approx(expected)
+
+
 @pytest.mark.parametrize(
     ("probability", "net_odds", "fraction", "expected"),
     [
