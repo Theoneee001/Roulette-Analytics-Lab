@@ -1,0 +1,101 @@
+from pathlib import Path
+import shutil
+import sys
+
+import pandas as pd
+import pytest
+
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from verify_artifacts import VerificationError, verify_artifacts
+
+
+def copy_artifacts(tmp_path: Path) -> Path:
+    destination = tmp_path / "project"
+    shutil.copytree(
+        ROOT,
+        destination,
+        ignore=shutil.ignore_patterns(
+            ".git",
+            ".venv",
+            ".worktrees",
+            "__pycache__",
+            ".pytest_cache",
+            ".matplotlib",
+            ".ipython",
+        ),
+    )
+    return destination
+
+
+def replace_csv_value(
+    root: Path, relative: str, key_column: str, key: str, column: str, value
+) -> None:
+    path = root / relative
+    table = pd.read_csv(path)
+    selected = table[key_column] == key
+    assert selected.sum() == 1
+    table.loc[selected, column] = value
+    table.to_csv(path, index=False, lineterminator="\n")
+
+
+def test_verifier_accepts_current_publication():
+    verify_artifacts(ROOT)
+
+
+def test_verifier_rejects_an_incorrect_house_edge(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    replace_csv_value(
+        copied,
+        "outputs/tables/house_edges.csv",
+        "rule",
+        "european",
+        "house_edge",
+        0.0,
+    )
+    with pytest.raises(VerificationError, match="European house edge"):
+        verify_artifacts(copied)
+
+
+def test_verifier_rejects_missing_manual_evidence(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    (copied / "docs/technical_blog.md").unlink()
+    with pytest.raises(VerificationError, match="technical blog"):
+        verify_artifacts(copied)
+
+
+def test_verifier_rejects_unexecuted_notebook(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    notebook_path = copied / "notebooks/roulette_analytics.ipynb"
+    text = notebook_path.read_text(encoding="utf-8")
+    text = text.replace('"execution_count": 1', '"execution_count": null', 1)
+    notebook_path.write_text(text, encoding="utf-8")
+    with pytest.raises(VerificationError, match="notebook"):
+        verify_artifacts(copied)
+
+
+def test_verifier_rejects_conflicting_public_headline(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    readme = copied / "README.md"
+    text = readme.read_text(encoding="utf-8").replace(
+        "2.70% on a European wheel", "9.99% on a European wheel"
+    )
+    readme.write_text(text, encoding="utf-8")
+    with pytest.raises(VerificationError, match="README headline"):
+        verify_artifacts(copied)
+
+
+def test_ci_runs_the_complete_reproducibility_gate():
+    workflow = (ROOT / ".github/workflows/reproducibility.yml").read_text(encoding="utf-8")
+    for command in (
+        "python -m pytest -q",
+        "python scripts/run_analysis.py",
+        "python scripts/build_notebook.py",
+        "python scripts/build_report_pdf.py",
+        "python scripts/verify_artifacts.py",
+        "git diff --exit-code",
+    ):
+        assert command in workflow
+    assert "python-version: '3.12'" in workflow
