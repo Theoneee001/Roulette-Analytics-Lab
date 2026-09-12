@@ -10,6 +10,14 @@ from .bets import (
     kelly_fraction,
     make_standard_bet,
 )
+from .bankroll import (
+    BankrollConfig,
+    BankrollSimulation,
+    RiskSummary,
+    StrategyKind,
+    simulate_bankroll,
+    summarize_bankroll,
+)
 from .wheels import (
     Pocket,
     WheelKind,
@@ -37,13 +45,17 @@ from .statistics import (
 __all__ = [
     "BetKind",
     "BetSpec",
+    "BankrollConfig",
+    "BankrollSimulation",
     "EnPrisonState",
     "FairnessResult",
     "MaxCountResult",
     "Pocket",
     "PosteriorEstimate",
     "PowerEstimate",
+    "RiskSummary",
     "SpecialRule",
+    "StrategyKind",
     "WheelKind",
     "WheelSpec",
     "SpinDataset",
@@ -60,7 +72,9 @@ __all__ = [
     "estimate_detection_power",
     "read_spin_csv",
     "simulate_spin_counts",
+    "simulate_bankroll",
     "split_spin_history",
+    "summarize_bankroll",
     "validate_probability_vector",
     "wheel_with_single_pocket_probability",
     "write_spin_csv",
