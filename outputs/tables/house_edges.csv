@@ -1,0 +1,6 @@
+rule,wheel,special_rule,bet,net_odds,expected_net_return,house_edge
+european,european,standard,straight,35,-0.027027027027026973,0.027027027027026973
+american,american,standard,straight,35,-0.052631578947368474,0.052631578947368474
+european_standard,european,standard,red,1,-0.027027027027026973,0.027027027027026973
+la_partage,european,la_partage,red,1,-0.013513513513513514,0.013513513513513514
+en_prison,european,en_prison,red,1,-0.013513513513513514,0.013513513513513514

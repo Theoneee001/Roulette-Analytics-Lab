@@ -1,15 +1,19 @@
-"""Generate the Task 4 reproducible roulette spin examples."""
+"""Generate deterministic example data and publication analysis artifacts."""
 
 from pathlib import Path
+import os
 import sys
 
 import numpy as np
 
 
 ROOT = Path(__file__).resolve().parents[1]
+os.environ.setdefault("MPLCONFIGDIR", str(ROOT / ".matplotlib"))
+os.environ.setdefault("MPLBACKEND", "Agg")
 sys.path.insert(0, str(ROOT / "src"))
 
 from roulette_lab.io import SpinDataset, write_spin_csv  # noqa: E402
+from roulette_lab.analysis import AnalysisConfig, run_full_analysis  # noqa: E402
 from roulette_lab.wheels import (  # noqa: E402
     WheelKind,
     WheelSpec,
@@ -52,6 +56,7 @@ def main() -> None:
         _simulate_dataset(biased_wheel, EXAMPLE_SPINS, BIASED_SEED),
         data_directory / "example_biased_spins.csv",
     )
+    run_full_analysis(AnalysisConfig()).write(ROOT / "outputs")
 
 
 if __name__ == "__main__":

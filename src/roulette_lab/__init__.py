@@ -41,10 +41,13 @@ from .statistics import (
     estimate_detection_power,
     simulate_spin_counts,
 )
+from .analysis import AnalysisBundle, AnalysisConfig, run_full_analysis
 
 __all__ = [
     "BetKind",
     "BetSpec",
+    "AnalysisBundle",
+    "AnalysisConfig",
     "BankrollConfig",
     "BankrollSimulation",
     "EnPrisonState",
@@ -71,6 +74,7 @@ __all__ = [
     "monte_carlo_global_pvalue",
     "estimate_detection_power",
     "read_spin_csv",
+    "run_full_analysis",
     "simulate_spin_counts",
     "simulate_bankroll",
     "split_spin_history",
