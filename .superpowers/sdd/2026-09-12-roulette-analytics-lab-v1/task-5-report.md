@@ -44,3 +44,32 @@
 - `.venv/bin/python -m compileall -q src tests scripts`: passed.
 - `.venv/bin/python -m pip check`: `No broken requirements found.`
 - Fallback Git `diff --check`: passed with no whitespace errors.
+
+## Fix Round 1
+
+- En Prison now preserves the actual imprisoned stake through repeated zeroes.
+  A covered settlement advances progression as a win and a non-zero settlement
+  advances it as a loss: Martingale resets/doubles respectively, while reverse
+  Martingale doubles/resets respectively. Kelly re-enters on the next eligible
+  spin using current liquid cash.
+- `BankrollSimulation` now records immutable `equity_paths` and horizon
+  `unresolved_stakes` alongside the backward-compatible liquid-cash `paths`.
+  An active En Prison stake is marked as liquid cash plus
+  `stake * p_win / (p_win + p_nonzero_loss)`; all other equity equals cash.
+  Risk summaries now use that equity for terminal wealth, loss, ruin, and
+  running-peak drawdown, so a recoverable stake is not automatically ruin.
+- Added value-safe NumPy equality for simulation results, including explicit
+  `NotImplemented` handling for other types.
+- Kelly configurations may carry a base stake above the table limit because
+  Kelly computes its own bankroll-based request; fixed and progression
+  strategies still reject that infeasible configuration.
+- Added deterministic controlled-wheel tests for zero-to-win/loss progression,
+  repeated zeroes, liquid-cash Kelly re-entry, horizon equity/unresolved stake,
+  equity-based risk, equality, new immutable arrays, and Kelly/table caps.
+
+## Fix Round 1 Verification
+
+- `.venv/bin/python -m pytest tests/test_bankroll.py -v`: 41 passed.
+- `.venv/bin/python -m pytest -q`: 169 passed.
+- `.venv/bin/python -m compileall -q src tests scripts`: passed.
+- `.venv/bin/python -m pip check`: `No broken requirements found.`

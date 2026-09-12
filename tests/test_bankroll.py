@@ -198,6 +198,132 @@ def test_en_prison_keeps_the_full_stake_in_play_after_zero_including_repeated_ze
     assert np.any(partage.paths[:, 1] == 95)
 
 
+def test_en_prison_settlement_uses_the_imprisoned_stake_for_progression():
+    wheel = _three_outcome_wheel()
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+    martingale = BankrollConfig(100, 10, 3, 1, StrategyKind.MARTINGALE)
+    reverse = BankrollConfig(100, 10, 3, 1, StrategyKind.REVERSE_MARTINGALE)
+
+    zero_loss_loss = simulate_bankroll(
+        martingale, wheel, bet, SpecialRule.EN_PRISON, np.random.default_rng(88)
+    )
+    zero_win_win = simulate_bankroll(
+        reverse, wheel, bet, SpecialRule.EN_PRISON, np.random.default_rng(11)
+    )
+
+    np.testing.assert_array_equal(zero_loss_loss.paths[0], [100, 90, 90, 70])
+    np.testing.assert_array_equal(zero_win_win.paths[0], [100, 90, 100, 120])
+
+
+def test_repeated_en_prison_zero_preserves_the_original_stake_for_progression():
+    wheel = _three_outcome_wheel()
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+    martingale = BankrollConfig(100, 10, 4, 1, StrategyKind.MARTINGALE)
+    reverse = BankrollConfig(100, 10, 4, 1, StrategyKind.REVERSE_MARTINGALE)
+
+    zero_zero_loss_loss = simulate_bankroll(
+        martingale, wheel, bet, SpecialRule.EN_PRISON, np.random.default_rng(168)
+    )
+    zero_zero_win_win = simulate_bankroll(
+        reverse, wheel, bet, SpecialRule.EN_PRISON, np.random.default_rng(111)
+    )
+
+    np.testing.assert_array_equal(zero_zero_loss_loss.paths[0], [100, 90, 90, 90, 70])
+    np.testing.assert_array_equal(zero_zero_win_win.paths[0], [100, 90, 90, 100, 120])
+
+
+def test_en_prison_horizon_marks_a_recoverable_stake_to_conditional_equity():
+    wheel = _three_outcome_wheel()
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+    config = BankrollConfig(10, 10, 1, 1, StrategyKind.FLAT)
+
+    simulation = simulate_bankroll(
+        config, wheel, bet, SpecialRule.EN_PRISON, np.random.default_rng(2)
+    )
+    summary = summarize_bankroll(simulation)
+
+    np.testing.assert_array_equal(simulation.paths[0], [10, 0])
+    np.testing.assert_array_equal(simulation.equity_paths[0], [10, 5])
+    np.testing.assert_array_equal(simulation.unresolved_stakes, [10])
+    assert summary.terminal_mean == pytest.approx(5)
+    assert summary.probability_of_loss == pytest.approx(1.0)
+    assert summary.probability_of_ruin == pytest.approx(0.0)
+    assert summary.expected_maximum_drawdown == pytest.approx(0.5)
+
+
+def test_kelly_recalculates_from_liquid_cash_after_an_en_prison_loss():
+    wheel = _three_outcome_wheel()
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+    config = BankrollConfig(
+        100,
+        10,
+        3,
+        1,
+        StrategyKind.KELLY,
+        estimated_win_probability=0.75,
+    )
+
+    simulation = simulate_bankroll(
+        config, wheel, bet, SpecialRule.EN_PRISON, np.random.default_rng(88)
+    )
+
+    np.testing.assert_array_equal(simulation.paths[0], [100, 50, 50, 25])
+
+
+def test_non_en_prison_equity_paths_equal_liquid_cash_paths():
+    wheel = make_fair_wheel(WheelKind.EUROPEAN)
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+    config = BankrollConfig(100, 5, 3, 4, StrategyKind.FLAT)
+
+    simulation = simulate_bankroll(
+        config, wheel, bet, SpecialRule.STANDARD, np.random.default_rng(8)
+    )
+
+    np.testing.assert_array_equal(simulation.equity_paths, simulation.paths)
+    np.testing.assert_array_equal(simulation.unresolved_stakes, np.zeros(4))
+
+
+def test_bankroll_simulation_equality_compares_numpy_values_safely():
+    wheel = make_fair_wheel(WheelKind.EUROPEAN)
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+    config = BankrollConfig(100, 5, 10, 10, StrategyKind.FLAT)
+
+    first = simulate_bankroll(config, wheel, bet, SpecialRule.STANDARD, np.random.default_rng(71))
+    same = simulate_bankroll(config, wheel, bet, SpecialRule.STANDARD, np.random.default_rng(71))
+    different = simulate_bankroll(
+        config, wheel, bet, SpecialRule.STANDARD, np.random.default_rng(72)
+    )
+
+    assert first == same
+    assert first != different
+    assert first.__eq__(object()) is NotImplemented
+
+
+def test_kelly_allows_an_unused_base_stake_above_table_limit_but_caps_the_bet():
+    wheel = wheel_with_single_pocket_probability(
+        make_fair_wheel(WheelKind.EUROPEAN), "17", 0.0
+    )
+    bet = make_standard_bet(BetKind.STRAIGHT, ("17",), wheel)
+
+    with pytest.raises(ValueError, match="base_stake"):
+        BankrollConfig(100, 20, 1, 1, StrategyKind.FLAT, table_limit=10)
+
+    kelly = BankrollConfig(
+        100,
+        20,
+        1,
+        1,
+        StrategyKind.KELLY,
+        estimated_win_probability=1.0,
+        table_limit=10,
+    )
+    simulation = simulate_bankroll(
+        kelly, wheel, bet, SpecialRule.STANDARD, np.random.default_rng(1)
+    )
+
+    np.testing.assert_array_equal(simulation.paths[0], [100, 90])
+
+
 def test_special_rule_compatibility_is_validated_before_simulation():
     wheel = make_fair_wheel(WheelKind.AMERICAN)
     bet = make_standard_bet(BetKind.RED, (), wheel)
@@ -269,8 +395,14 @@ def test_simulation_and_summary_are_immutable_and_path_dimensions_include_initia
     assert simulation.paths.shape == (4, 4)
     assert np.all(simulation.paths[:, 0] == 100)
     assert simulation.paths.flags.writeable is False
+    assert simulation.equity_paths.flags.writeable is False
+    assert simulation.unresolved_stakes.flags.writeable is False
     with pytest.raises(ValueError):
         simulation.paths[0, 0] = 0
+    with pytest.raises(ValueError):
+        simulation.equity_paths[0, 0] = 0
+    with pytest.raises(ValueError):
+        simulation.unresolved_stakes[0] = 0
     with pytest.raises(FrozenInstanceError):
         config.base_stake = 1
     assert summary.path_count == 4
@@ -337,3 +469,12 @@ def test_bankroll_interfaces_are_exported_from_the_package():
     assert ExportedStrategyKind is StrategyKind
     assert exported_simulate_bankroll is simulate_bankroll
     assert exported_summarize_bankroll is summarize_bankroll
+
+
+def _three_outcome_wheel():
+    base = make_fair_wheel(WheelKind.EUROPEAN)
+    probabilities = np.zeros(len(base.labels))
+    probabilities[base.labels.index("0")] = 1 / 3
+    probabilities[base.labels.index("1")] = 1 / 3
+    probabilities[base.labels.index("2")] = 1 / 3
+    return make_biased_wheel(WheelKind.EUROPEAN, probabilities)
