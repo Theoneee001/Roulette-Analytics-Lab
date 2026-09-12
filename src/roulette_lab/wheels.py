@@ -116,10 +116,10 @@ def wheel_with_single_pocket_probability(
     if not isinstance(label, str) or label not in base_wheel.labels:
         raise ValueError("label must identify a pocket on base_wheel.")
     if isinstance(probability, bool) or not isinstance(probability, Real):
-        raise ValueError("probability must be a finite number strictly between zero and one.")
+        raise ValueError("probability must be a finite number between zero and one inclusive.")
     probability = float(probability)
-    if not np.isfinite(probability) or not 0.0 < probability < 1.0:
-        raise ValueError("probability must be a finite number strictly between zero and one.")
+    if not np.isfinite(probability) or not 0.0 <= probability <= 1.0:
+        raise ValueError("probability must be a finite number between zero and one inclusive.")
 
     target_index = base_wheel.labels.index(label)
     other_probabilities = np.delete(base_wheel.probabilities, target_index)
@@ -127,9 +127,16 @@ def wheel_with_single_pocket_probability(
     if other_mass <= 0.0:
         raise ValueError("Cannot redistribute a wheel with no probability outside label.")
 
-    adjusted = np.array(base_wheel.probabilities, dtype=float, copy=True)
+    adjusted = np.zeros(len(base_wheel.probabilities), dtype=float)
     adjusted[target_index] = probability
-    adjusted[np.arange(len(adjusted)) != target_index] *= (1.0 - probability) / other_mass
+    other_indices = np.arange(len(adjusted)) != target_index
+    if probability < 1.0:
+        adjusted[other_indices] = (
+            base_wheel.probabilities[other_indices] * (1.0 - probability) / other_mass
+        )
+        correction = 1.0 - float(adjusted.sum())
+        if correction:
+            adjusted[np.flatnonzero(other_indices)[np.argmax(adjusted[other_indices])]] += correction
     return WheelSpec(
         kind=base_wheel.kind,
         labels=base_wheel.labels,

@@ -16,6 +16,7 @@ from roulette_lab.statistics import (
 )
 from roulette_lab.wheels import (
     WheelKind,
+    WheelSpec,
     make_biased_wheel,
     make_fair_wheel,
     wheel_with_single_pocket_probability,
@@ -108,12 +109,46 @@ def test_single_pocket_probability_preserves_other_relative_probabilities():
     )
 
 
-@pytest.mark.parametrize("label, probability", [("99", 0.1), ("17", 0.0), ("17", 1.0), ("17", float("nan"))])
+@pytest.mark.parametrize(
+    "label, probability", [("99", 0.1), ("17", -0.01), ("17", 1.01), ("17", float("nan"))]
+)
 def test_single_pocket_probability_validates_label_and_probability(label, probability):
     with pytest.raises(ValueError):
         wheel_with_single_pocket_probability(
             make_fair_wheel(WheelKind.EUROPEAN), label, probability
         )
+
+
+@pytest.mark.parametrize("probability", [0.0, 1.0])
+def test_single_pocket_probability_accepts_endpoints_with_immutable_unit_mass(
+    probability,
+):
+    base = make_fair_wheel(WheelKind.EUROPEAN)
+    target_index = base.labels.index("17")
+
+    biased = wheel_with_single_pocket_probability(base, "17", probability)
+
+    assert biased.probabilities[target_index] == probability
+    assert biased.probabilities.sum() == 1.0
+    if probability == 0.0:
+        np.testing.assert_allclose(
+            np.delete(biased.probabilities, target_index), np.full(36, 1 / 36)
+        )
+    else:
+        np.testing.assert_array_equal(
+            np.delete(biased.probabilities, target_index), np.zeros(36)
+        )
+    with pytest.raises(ValueError):
+        biased.probabilities[target_index] = 0.5
+
+
+def test_single_pocket_probability_keeps_impossible_base_wheel_guard():
+    probabilities = np.zeros(37)
+    probabilities[17] = 1.0
+    base = make_biased_wheel(WheelKind.EUROPEAN, probabilities)
+
+    with pytest.raises(ValueError, match="Cannot redistribute"):
+        wheel_with_single_pocket_probability(base, "17", 1.0)
 
 
 def test_simulate_spin_counts_is_seeded_and_has_the_requested_total():
@@ -185,6 +220,19 @@ def test_power_false_positive_rate_is_broadly_calibrated_at_alpha():
     assert 0.025 <= result.estimated_power <= 0.075
 
 
+def test_power_estimation_requires_at_least_five_expected_null_counts():
+    wheel = make_fair_wheel(WheelKind.EUROPEAN)
+
+    with pytest.raises(ValueError, match="at least five"):
+        estimate_detection_power(wheel, wheel, 184, 0.05, 10, np.random.default_rng(5))
+
+    result = estimate_detection_power(
+        wheel, wheel, 185, 0.05, 10, np.random.default_rng(5)
+    )
+
+    assert result.sample_size == 185
+
+
 def test_power_rises_for_a_stronger_bias():
     null = make_fair_wheel(WheelKind.EUROPEAN)
     weak = wheel_with_single_pocket_probability(null, "17", 0.04)
@@ -222,7 +270,7 @@ def test_power_estimation_records_state_for_non_default_seeded_generators():
     wheel = make_fair_wheel(WheelKind.EUROPEAN)
     rng = np.random.Generator(np.random.MT19937(91))
 
-    result = estimate_detection_power(wheel, wheel, 100, 0.05, 10, rng)
+    result = estimate_detection_power(wheel, wheel, 185, 0.05, 10, rng)
 
     assert result.rng_bit_generator == "MT19937"
     assert result.rng_state
@@ -239,6 +287,47 @@ def test_power_estimation_validates_inputs(spins, alpha, experiments):
         estimate_detection_power(
             wheel, wheel, spins, alpha, experiments, np.random.default_rng(1)
         )
+
+
+def test_spin_dataset_rejects_labels_that_contradict_its_wheel_kind():
+    american = make_fair_wheel(WheelKind.AMERICAN)
+
+    with pytest.raises(ValueError, match="canonical labels"):
+        SpinDataset(
+            spin_indices=(1,),
+            spins=("00",),
+            wheel_kind=WheelKind.EUROPEAN,
+            wheel_labels=american.labels,
+            wheel_probabilities=tuple(american.probabilities),
+        )
+
+
+def test_spin_dataset_accepts_a_biased_snapshot_with_canonical_labels():
+    fair = make_fair_wheel(WheelKind.EUROPEAN)
+    biased = wheel_with_single_pocket_probability(fair, "17", 0.06)
+
+    dataset = SpinDataset(
+        spin_indices=(1,),
+        spins=("17",),
+        wheel_kind=biased.kind,
+        wheel_labels=biased.labels,
+        wheel_probabilities=tuple(biased.probabilities),
+    )
+
+    assert dataset.wheel_probabilities == tuple(biased.probabilities)
+
+
+def test_csv_reader_rejects_wheel_spec_with_labels_that_contradict_its_kind():
+    american = make_fair_wheel(WheelKind.AMERICAN)
+    contradictory_wheel = WheelSpec(
+        kind=WheelKind.EUROPEAN,
+        labels=american.labels,
+        colours=american.colours,
+        probabilities=american.probabilities,
+    )
+
+    with pytest.raises(ValueError, match="canonical labels"):
+        read_spin_csv(b"spin,pocket\n1,00\n", contradictory_wheel)
 
 
 def test_analysis_entry_point_generates_fixed_seed_example_csvs():

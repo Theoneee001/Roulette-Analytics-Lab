@@ -28,3 +28,23 @@
 - `.venv/bin/python -m compileall -q src scripts`: passed.
 - `.venv/bin/python -m pip check`: `No broken requirements found.`
 - `.venv/bin/python scripts/run_analysis.py`: regenerated both tracked CSVs.
+
+## Fix Round 1
+
+- `wheel_with_single_pocket_probability` now accepts finite endpoint values
+  `0` and `1`, preserves the existing impossible-base-wheel guard, preserves
+  immutable output probabilities, and produces exact unit probability mass.
+- `estimate_detection_power` now rejects any experiment whose null expected
+  count is below five, including the exact fair-European 184/185-spin boundary.
+- `SpinDataset` now requires canonical wheel labels for its declared kind while
+  retaining support for arbitrary valid probability snapshots. CSV reads now
+  reject direct contradictory `WheelSpec` inputs through this invariant.
+- Added endpoint, asymptotic-boundary, canonical-label, contradictory-wheel,
+  and valid-biased-snapshot regression coverage.
+
+## Fix Round 1 Verification
+
+- `.venv/bin/python -m pytest tests/test_io_and_power.py -v`: 39 passed.
+- `.venv/bin/python -m pytest -q`: 128 passed.
+- `.venv/bin/python -m compileall -q src scripts`: passed.
+- `.venv/bin/python -m pip check`: `No broken requirements found.`

@@ -7,7 +7,7 @@ from os import PathLike
 from pathlib import Path
 from typing import BinaryIO, TextIO
 
-from .wheels import WheelKind, WheelSpec, validate_probability_vector
+from .wheels import WheelKind, WheelSpec, make_fair_wheel, validate_probability_vector
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,18 +23,21 @@ class SpinDataset:
     def __post_init__(self) -> None:
         indices = tuple(self.spin_indices)
         spins = tuple(self.spins)
+        wheel_kind = WheelKind(self.wheel_kind)
         labels = tuple(self.wheel_labels)
         probabilities = tuple(float(value) for value in self.wheel_probabilities)
         if not indices or len(indices) != len(spins):
             raise ValueError("SpinDataset requires matching non-empty spin indices and spins.")
         if indices != tuple(range(1, len(indices) + 1)):
             raise ValueError("SpinDataset spin indices must be consecutive positive integers.")
+        if labels != make_fair_wheel(wheel_kind).labels:
+            raise ValueError("SpinDataset wheel_labels must match canonical labels for wheel_kind.")
         if any(not isinstance(spin, str) or spin not in labels for spin in spins):
             raise ValueError("SpinDataset contains an unknown pocket.")
         validate_probability_vector(probabilities, len(labels))
         object.__setattr__(self, "spin_indices", indices)
         object.__setattr__(self, "spins", spins)
-        object.__setattr__(self, "wheel_kind", WheelKind(self.wheel_kind))
+        object.__setattr__(self, "wheel_kind", wheel_kind)
         object.__setattr__(self, "wheel_labels", labels)
         object.__setattr__(self, "wheel_probabilities", probabilities)
 

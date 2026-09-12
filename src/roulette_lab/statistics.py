@@ -344,8 +344,6 @@ def estimate_detection_power(
     alternative_wheel = _validated_wheel(alternative_wheel)
     if null_wheel.labels != alternative_wheel.labels:
         raise ValueError("null_wheel and alternative_wheel must have identical labels.")
-    if np.any(null_wheel.probabilities <= 0.0):
-        raise ValueError("null_wheel probabilities must all be positive for Pearson testing.")
     spins = _validated_positive_integer(spins, "spins")
     alpha = _validated_probability_input(alpha, "alpha")
     experiments = _validated_positive_integer(experiments, "experiments")
@@ -353,6 +351,10 @@ def estimate_detection_power(
     rng_state = _rng_state_json(rng)
 
     expected_counts = spins * null_wheel.probabilities
+    if np.any(expected_counts < 5.0):
+        raise ValueError(
+            "Every null expected count must be at least five for asymptotic Pearson testing."
+        )
     samples = rng.multinomial(spins, alternative_wheel.probabilities, size=experiments)
     statistics = np.sum((samples - expected_counts) ** 2 / expected_counts, axis=1)
     critical_value = scipy.stats.chi2.isf(alpha, len(null_wheel.labels) - 1)
