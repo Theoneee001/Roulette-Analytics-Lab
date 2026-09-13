@@ -91,6 +91,21 @@ def test_readme_contains_manual_requirements():
         assert f"## {heading}" in readme
 
 
+def test_public_dashboard_is_linked_across_release_documents():
+    live_url = "https://roulette-analytics-lab.streamlit.app/"
+    for relative in [
+        "README.md",
+        "docs/deliverables_checklist.md",
+        "docs/visual_qa.md",
+    ]:
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        assert live_url in text, f"Missing public dashboard URL in {relative}"
+
+    checklist = (ROOT / "docs/deliverables_checklist.md").read_text(encoding="utf-8")
+    assert "| Online demonstration |" in checklist
+    assert "Post-acceptance only" not in checklist
+
+
 def test_provenance_credits_every_author_and_records_source_checksum():
     text = (ROOT / "docs/provenance.md").read_text(encoding="utf-8")
     for author in [

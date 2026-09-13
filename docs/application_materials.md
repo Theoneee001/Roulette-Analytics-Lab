@@ -1,8 +1,10 @@
 # Application Materials
 
+**Portfolio evidence:** [GitHub repository](https://github.com/Theoneee001/Roulette-Analytics-Lab) | [Live interactive dashboard](https://roulette-analytics-lab.streamlit.app/)
+
 ## CV Bullets
 
-- Reimplemented a University of Manchester roulette probability project as a  tested Python package and Streamlit product, covering exact expectation, chi-squared inference, Monte Carlo calibration, Bayesian uncertainty, and constrained bankroll simulation.
+- Reimplemented a University of Manchester roulette probability project as a tested Python package and Streamlit product, covering exact expectation, chi-squared inference, Monte Carlo calibration, Bayesian uncertainty, and constrained bankroll simulation.
 - Identified and corrected a post-selection error in testing the hottest observed pocket; added family-wise simulation, reproducible power analysis, and 180+ automated tests to support defensible conclusions.
 - Built a deterministic analytics pipeline that produces seven CSV tables, six publication figures, an executed notebook, and a 3,000+ word technical report from version-controlled assumptions and seeds.
 - Translated undergraduate mathematics into an interactive decision tool with European and American wheels, La Partage and En Prison rules, complete bet geometry, Kelly sensitivity, drawdown, stop-loss, take-profit, and table-limit controls.

@@ -17,6 +17,12 @@ The responsive review used a 390x844 device viewport. An initial capture exposed
 
 The final screenshot was captured through Chrome's device emulation after the built-in screenshot transport produced incorrect clipping metadata. It was inspected at original resolution and saved as `docs/assets/dashboard-mobile.png`, a true 390x844 PNG. The fourth tab remains available through the standard horizontal tab scroll on narrow screens; content does not overlap.
 
+## Online deployment check
+
+The production app was deployed from `main/app.py` on Streamlit Community Cloud with Python 3.12 and is available at [roulette-analytics-lab.streamlit.app](https://roulette-analytics-lab.streamlit.app/). Streamlit's sharing settings identify the app as public and searchable. A separate anonymous HTTP session completed the platform's session handshake and returned status 200.
+
+The online review repeated the critical workflows at 1440x1000 and 390x844. All four tabs rendered. The biased repository CSV uploaded successfully and selected pocket 17 as the hottest pocket. Changing the bankroll strategy to quarter Kelly and raising the estimated win probability to `0.06000` recomputed terminal wealth, loss probability, and drawdown. The Methods & Limits tab retained the expected-value formula, selection-aware testing explanation, Kelly caveat, and responsible-use warning. Browser logs contained no errors or warnings after the completed checks.
+
 ## PDF check
 
 `report/technical_report.pdf` was rendered to a contact sheet and inspected across all 11 pages. Pages 1, 7, 10, and 11 were also checked at higher resolution because they contain the metric panel, dense figures, a section boundary, and references. The review found:
@@ -29,5 +35,4 @@ The final screenshot was captured through Chrome's device emulation after the bu
 
 ## Accepted limitations
 
-Streamlit's tab strip scrolls horizontally on a phone because four descriptive labels cannot remain readable in 390 pixels. This is an intentional native interaction, not hidden overflow. The public release is local and GitHub-ready; online Streamlit deployment remains a post-acceptance action.
-
+Streamlit's tab strip scrolls horizontally on a phone because four descriptive labels cannot remain readable in 390 pixels. This is an intentional native interaction, not hidden overflow. Owners see Streamlit's management control over the lower corner of the app; ordinary viewers do not receive that owner-only overlay.

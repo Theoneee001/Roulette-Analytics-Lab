@@ -23,8 +23,8 @@ This checklist maps the execution manual's Project 1 expectations to repository 
 | AI capability evidence | Assisted workflow plus verification boundary | [`ai_workflow.md`](ai_workflow.md) | Complete |
 | Application value | CV, PS, interview, contribution, and programme maps | [`application_materials.md`](application_materials.md) | Complete |
 | Responsible framing | No profit promise and explicit limitations | [`README.md`](../README.md), [`technical_report.md`](../report/technical_report.md), [`app.py`](../app.py) | Complete |
-| Online demonstration | Public Streamlit URL | GitHub-ready code and local command are complete | Post-acceptance only |
+| Online demonstration | Public Streamlit URL | [Live dashboard](https://roulette-analytics-lab.streamlit.app/) | Complete |
 
 ## Release gate
 
-The release is ready only when all automated tests pass, the notebook executes, publication outputs regenerate without drift, the PDF renders cleanly, desktop and mobile dashboard views are checked, and the final ZIP passes `unzip -t`. The external manifest records the archive checksum without creating a circular checksum inside the ZIP. Online Streamlit deployment is the sole deferred item and follows user acceptance.
+The release is ready only when all automated tests pass, the notebook executes, publication outputs regenerate without drift, the PDF renders cleanly, desktop and mobile dashboard views are checked, the public dashboard is reachable, and the final ZIP passes `unzip -t`. The external manifest records the archive checksum without creating a circular checksum inside the ZIP. Every listed Project 1 deliverable, including the online demonstration, is complete.

@@ -2,6 +2,8 @@
 
 **Optimal Betting Strategy Simulator: A Statistical Laboratory for Roulette Bias, Bankroll Risk and Decision-Making**
 
+[Open the live Streamlit dashboard](https://roulette-analytics-lab.streamlit.app/)
+
 Roulette Analytics Lab is a reproducible Python portfolio project built from the mathematical questions studied in the University of Manchester MATH20062 Group 40 report. It turns a static academic investigation into a tested package, a deterministic analysis pipeline, an executable notebook, and a Streamlit dashboard. The project asks three linked questions: what the rules imply before any wheel is spun, what observed spins can tell us about fairness, and how uncertainty changes bankroll risk.
 
 This is an educational probability project, not a system for making money from gambling. Under a fair wheel and standard casino payouts, every conventional bet has negative expected net return.
@@ -116,7 +118,7 @@ The screenshots below were generated from the tested V1 interface. The full inte
 
 ![Roulette Analytics Lab mobile dashboard](docs/assets/dashboard-mobile.png)
 
-The repository also ships six deterministic publication figures in [outputs/figures](outputs/figures). Online Streamlit deployment is intentionally deferred until the V1 content is accepted; the local launch command above runs the complete app.
+The repository also ships six deterministic publication figures in [outputs/figures](outputs/figures). The public dashboard is available at [roulette-analytics-lab.streamlit.app](https://roulette-analytics-lab.streamlit.app/), and the local launch command above runs the same app from source.
 
 ## Reproducibility
 
