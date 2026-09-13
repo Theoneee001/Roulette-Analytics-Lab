@@ -1,0 +1,15 @@
+Roulette Analytics Lab V1 Review Package
+========================================
+
+Archive: Roulette_Analytics_Lab_V1.zip
+Source commit: 3de398cb67e92d8b89b5cad62af701952b6afe34
+Archive SHA-256: d059a58e1a9da350b84991ff7ad8eea7c5b00fd728b392ca71fdeb626c3aa37a
+Created: 2026-09-13 (Asia/Shanghai)
+
+Source report SHA-256:
+0364398a2cdcc91b1653604a9ca1b7adfaac529d99bc8e115f53475fa49c40e5
+
+Integrity check: unzip -t passed with no errors.
+The manifest is intentionally outside the ZIP to avoid a circular checksum.
+The unapproved Group 40 source PDF, .git data, virtual environments, caches,
+and local worktree metadata are not included in the archive.
