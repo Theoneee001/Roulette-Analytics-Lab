@@ -1,6 +1,8 @@
 from pathlib import Path
 import re
 
+from PIL import Image
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -141,3 +143,25 @@ def test_targeted_publication_files_contain_no_em_dash():
     ]:
         assert "—" not in (ROOT / relative).read_text(encoding="utf-8")
 
+
+def test_release_visual_evidence_has_expected_dimensions_and_scope():
+    expected = {
+        "dashboard-desktop.png": (1440, 1000),
+        "dashboard-mobile.png": (390, 844),
+    }
+    for filename, dimensions in expected.items():
+        with Image.open(ROOT / "docs" / "assets" / filename) as screenshot:
+            assert screenshot.format == "PNG"
+            assert screenshot.size == dimensions
+
+    record = (ROOT / "docs" / "visual_qa.md").read_text(encoding="utf-8")
+    for phrase in [
+        "Wheel & Bets",
+        "Fairness Lab",
+        "Bankroll Simulator",
+        "Methods & Limits",
+        "390x844",
+        "11 pages",
+        "WebSocket",
+    ]:
+        assert phrase in record

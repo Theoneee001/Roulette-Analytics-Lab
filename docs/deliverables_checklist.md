@@ -2,26 +2,29 @@
 
 This checklist maps the execution manual's Project 1 expectations to repository evidence.
 
-| Requirement | Deliverable | Evidence | Status |
+| Requirement | Deliverable | Concrete evidence | Status |
 | --- | --- | --- | --- |
-| Python programming evidence | Tested package and scripts | `src/roulette_lab`, `scripts`, `tests` | Complete |
-| Roulette project reconstruction | Independent implementation from mathematical specification | `docs/provenance.md`, package modules | Complete |
-| Kelly Criterion | Conditional full, half, and quarter Kelly | `bets.py`, `bankroll.py`, dashboard | Complete |
-| Chi-squared testing | Asymptotic and Monte Carlo global tests | `statistics.py`, notebook, report | Complete |
-| Random walk simulation | Bankroll paths and drawdown analysis | `bankroll.py`, figure 06 | Complete |
-| Interactive dashboard | Adjustable assumptions and live charts | `app.py`, `dashboard.py` | Complete |
-| Technical blog | Mathematics, implementation, results, and limits | `docs/technical_blog.md` | Complete |
-| Full technical report | 3,000 to 5,000 words plus figures | `report/technical_report.md`, PDF | Complete after build |
-| GitHub-ready repository | README, licence, lock file, commands | repository root | Complete |
-| Code reproducibility | Fixed seeds and deterministic outputs | `scripts/run_analysis.py`, tests | Complete |
-| Data | Fair and biased teaching datasets | `data/*.csv` | Complete |
-| Correct interpretation | Negative expectation and selection correction | report, blog, README | Complete |
-| AI capability evidence | Documented assisted workflow and checks | `docs/ai_workflow.md` | Complete |
-| Application value | CV, PS, interview, contribution, programme maps | `docs/application_materials.md` | Complete |
-| Personal portfolio boundary | Group credit and individual extension | `docs/provenance.md` | Complete |
-| Responsible framing | No profit promise; limitations stated | README, report, dashboard | Complete |
+| Python reimplementation | Tested package and scripts | [`src/roulette_lab`](../src/roulette_lab), [`scripts`](../scripts), [`tests`](../tests) | Complete |
+| Source and personal contribution boundary | Independent implementation from the mathematical specification | [`provenance.md`](provenance.md) | Complete |
+| Kelly Criterion | Conditional full, half, and quarter Kelly | [`bets.py`](../src/roulette_lab/bets.py), [`bankroll.py`](../src/roulette_lab/bankroll.py), [`app.py`](../app.py) | Complete |
+| Chi-squared testing | Asymptotic and Monte Carlo global tests | [`statistics.py`](../src/roulette_lab/statistics.py), [`roulette_analytics.ipynb`](../notebooks/roulette_analytics.ipynb) | Complete |
+| Selection correction | Naive, Bonferroni, and maximum-count family-wise results | [`bias_tests.csv`](../outputs/tables/bias_tests.csv), [`technical_blog.md`](technical_blog.md) | Complete |
+| Random walk simulation | Running frequency and bankroll paths | [`03_lln_convergence.png`](../outputs/figures/03_lln_convergence.png), [`06_bankroll_risk.png`](../outputs/figures/06_bankroll_risk.png) | Complete |
+| Adjustable dashboard controls | Bankroll, odds, stop-loss, take-profit, paths, spins, seed, and strategy | [`app.py`](../app.py), [`dashboard.py`](../src/roulette_lab/dashboard.py) | Complete |
+| Real-time curves | Probability, residual, and bankroll charts | [`dashboard-desktop.png`](assets/dashboard-desktop.png), [`visual_qa.md`](visual_qa.md) | Complete |
+| Responsive design | Desktop and 390x844 evidence | [`dashboard-desktop.png`](assets/dashboard-desktop.png), [`dashboard-mobile.png`](assets/dashboard-mobile.png) | Complete |
+| Technical blog | Mathematics, implementation, results, and limits | [`technical_blog.md`](technical_blog.md) | Complete |
+| Full technical report | 4,000+ prose words and 11-page A4 PDF | [`technical_report.md`](../report/technical_report.md), [`technical_report.pdf`](../report/technical_report.pdf) | Complete |
+| GitHub-ready repository | README, licence, lock file, commands, CI | [`README.md`](../README.md), [`LICENSE`](../LICENSE), [`requirements-lock.txt`](../requirements-lock.txt), [`reproducibility.yml`](../.github/workflows/reproducibility.yml) | Complete |
+| Code reproducibility | Fixed seeds and permanent cross-artifact checks | [`run_analysis.py`](../scripts/run_analysis.py), [`verify_artifacts.py`](../scripts/verify_artifacts.py) | Complete |
+| Data | Fair and biased teaching datasets with strict schema | [`example_unbiased_spins.csv`](../data/example_unbiased_spins.csv), [`example_biased_spins.csv`](../data/example_biased_spins.csv), [`README`](../data/README.md) | Complete |
+| Machine-readable results | Seven output tables and six figures | [`outputs/tables`](../outputs/tables), [`outputs/figures`](../outputs/figures) | Complete |
+| Correct interpretation | Negative expectation, post-selection bias, and probability uncertainty | [`technical_report.md`](../report/technical_report.md), [`technical_blog.md`](technical_blog.md) | Complete |
+| AI capability evidence | Assisted workflow plus verification boundary | [`ai_workflow.md`](ai_workflow.md) | Complete |
+| Application value | CV, PS, interview, contribution, and programme maps | [`application_materials.md`](application_materials.md) | Complete |
+| Responsible framing | No profit promise and explicit limitations | [`README.md`](../README.md), [`technical_report.md`](../report/technical_report.md), [`app.py`](../app.py) | Complete |
+| Online demonstration | Public Streamlit URL | GitHub-ready code and local command are complete | Post-acceptance only |
 
 ## Release gate
 
-The release is ready only when all automated tests pass, the notebook executes, publication outputs regenerate without drift, the PDF renders cleanly, desktop and mobile dashboard views are checked, and the final ZIP passes `unzip -t`. The external manifest records the archive checksum without creating a circular checksum inside the ZIP.
-
+The release is ready only when all automated tests pass, the notebook executes, publication outputs regenerate without drift, the PDF renders cleanly, desktop and mobile dashboard views are checked, and the final ZIP passes `unzip -t`. The external manifest records the archive checksum without creating a circular checksum inside the ZIP. Online Streamlit deployment is the sole deferred item and follows user acceptance.

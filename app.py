@@ -52,7 +52,16 @@ st.markdown(
     [data-baseweb="tab-list"] { gap: 1.6rem; border-bottom: 1px solid var(--line); }
     [data-baseweb="tab"] { padding-left: 0; padding-right: 0; }
     @media (max-width: 760px) {
-      .lab-title h1 { font-size: 1.7rem; }
+      .lab-title h1, .lab-title p, .scenario-note {
+        max-width: 100%;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+      }
+      .lab-title h1 { font-size: 1.55rem; line-height: 1.18; }
+      .lab-title p, .scenario-note { font-size: .9rem; line-height: 1.45; }
+      [data-baseweb="tab-list"] { overflow-x: auto; gap: 1rem; }
+      [data-baseweb="tab"] { flex: 0 0 auto; }
+      [data-testid="stMetricValue"] { font-size: 1.35rem; }
       [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
     }
     </style>

@@ -1,4 +1,5 @@
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -15,6 +16,9 @@ from roulette_lab.dashboard import (
 )
 from roulette_lab.io import SpinDataset
 from roulette_lab.wheels import WheelKind, make_fair_wheel
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_dashboard_rejects_stop_loss_above_initial_bankroll():
@@ -112,3 +116,10 @@ def test_dashboard_rejects_incompatible_special_rule_and_wheel():
     with pytest.raises(ValueError, match="European even-money"):
         build_wheel_view(inputs)
 
+
+def test_mobile_css_allows_titles_and_notices_to_wrap():
+    source = (ROOT / "app.py").read_text(encoding="utf-8")
+
+    assert "white-space: normal !important" in source
+    assert "overflow-wrap: anywhere" in source
+    assert "[data-baseweb=\"tab-list\"] { overflow-x: auto" in source

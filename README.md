@@ -106,7 +106,17 @@ The strategy comparison is a stress test under that favourable synthetic pocket,
 
 ## Screenshots
 
-The repository ships deterministic figures in [outputs/figures](outputs/figures). Final dashboard screenshots are generated during release verification so that the images match the current controls and code.
+The screenshots below were generated from the tested V1 interface. The full interaction record is in [docs/visual_qa.md](docs/visual_qa.md).
+
+### Desktop: bankroll paths and risk metrics
+
+![Roulette Analytics Lab desktop dashboard](docs/assets/dashboard-desktop.png)
+
+### Mobile: wheel economics and probability model
+
+![Roulette Analytics Lab mobile dashboard](docs/assets/dashboard-mobile.png)
+
+The repository also ships six deterministic publication figures in [outputs/figures](outputs/figures). Online Streamlit deployment is intentionally deferred until the V1 content is accepted; the local launch command above runs the complete app.
 
 ## Reproducibility
 
@@ -141,4 +151,3 @@ Code is released under the MIT License. The source group report is not included 
   note    = {Independent Python portfolio extension of the MATH20062 Group 40 report}
 }
 ```
-
