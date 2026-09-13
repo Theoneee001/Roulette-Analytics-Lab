@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import matplotlib
+import numpy as np
 import pandas as pd
 
 matplotlib.use("Agg")
@@ -113,3 +114,18 @@ def test_analysis_entry_point_writes_all_tables_figures_and_summary(tmp_path):
     assert "Selection-aware" in summary
     assert "Kelly" in summary
     assert "not guaranteed profit" in summary
+
+
+def test_analysis_csvs_ignore_platform_level_float_noise(tmp_path):
+    reference = run_full_analysis(AnalysisConfig.fast_test())
+    perturbed = run_full_analysis(AnalysisConfig.fast_test())
+    column = "asymptotic_p_value"
+    original = perturbed.bias_tests.loc[0, column]
+    perturbed.bias_tests.loc[0, column] = np.nextafter(original, np.inf)
+
+    reference.write(tmp_path / "reference")
+    perturbed.write(tmp_path / "perturbed")
+
+    reference_csv = (tmp_path / "reference" / "tables" / "bias_tests.csv").read_text()
+    perturbed_csv = (tmp_path / "perturbed" / "tables" / "bias_tests.csv").read_text()
+    assert reference_csv == perturbed_csv

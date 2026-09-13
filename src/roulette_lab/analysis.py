@@ -130,7 +130,12 @@ class AnalysisBundle:
         tables.mkdir(parents=True, exist_ok=True)
         figures.mkdir(parents=True, exist_ok=True)
         for name in self.table_names():
-            getattr(self, name).to_csv(tables / f"{name}.csv", index=False, lineterminator="\n")
+            getattr(self, name).to_csv(
+                tables / f"{name}.csv",
+                index=False,
+                lineterminator="\n",
+                float_format="%.12g",
+            )
         for filename, figure in publication_figures(self).items():
             figure.savefig(
                 figures / filename,
