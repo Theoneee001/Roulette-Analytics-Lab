@@ -42,6 +42,12 @@ from .statistics import (
     simulate_spin_counts,
 )
 from .analysis import AnalysisBundle, AnalysisConfig, run_full_analysis
+from .sequential import (
+    CUSUMResult,
+    SequentialEvidence,
+    cusum_change_detection,
+    likelihood_ratio_path,
+)
 
 __all__ = [
     "BetKind",
@@ -50,6 +56,7 @@ __all__ = [
     "AnalysisConfig",
     "BankrollConfig",
     "BankrollSimulation",
+    "CUSUMResult",
     "EnPrisonState",
     "FairnessResult",
     "MaxCountResult",
@@ -57,6 +64,7 @@ __all__ = [
     "PosteriorEstimate",
     "PowerEstimate",
     "RiskSummary",
+    "SequentialEvidence",
     "SpecialRule",
     "StrategyKind",
     "WheelKind",
@@ -65,7 +73,9 @@ __all__ = [
     "expected_net_return",
     "house_edge",
     "kelly_fraction",
+    "likelihood_ratio_path",
     "chi_square_fairness",
+    "cusum_change_detection",
     "dirichlet_posterior",
     "make_biased_wheel",
     "make_fair_wheel",

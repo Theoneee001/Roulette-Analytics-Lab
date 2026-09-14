@@ -1,0 +1,132 @@
+"""Sequential likelihood-ratio evidence and Page-style CUSUM diagnostics."""
+
+from dataclasses import dataclass
+from numbers import Real
+
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
+
+
+@dataclass(frozen=True, slots=True)
+class SequentialEvidence:
+    """Likelihood-ratio evidence path for one declared null and alternative."""
+
+    log_likelihood_ratio: NDArray[np.float64]
+    e_values: NDArray[np.float64]
+    threshold: float
+    first_crossing: int | None
+    p0: float
+    p1: float
+    alpha: float
+
+
+@dataclass(frozen=True, slots=True)
+class CUSUMResult:
+    """Page-style CUSUM scores for one declared null and alternative."""
+
+    scores: NDArray[np.float64]
+    threshold: float
+    first_alarm: int | None
+    p0: float
+    p1: float
+
+
+def _binary_observations(observations: ArrayLike) -> NDArray[np.int64]:
+    values = np.asarray(observations)
+    if values.ndim != 1 or values.size == 0:
+        raise ValueError("observations must be a non-empty one-dimensional binary array.")
+    if np.issubdtype(values.dtype, np.bool_):
+        return values.astype(np.int64)
+    if not np.issubdtype(values.dtype, np.number) or np.issubdtype(
+        values.dtype, np.complexfloating
+    ):
+        raise ValueError("observations must be a non-empty one-dimensional binary array.")
+    if not np.all(np.isfinite(values)) or np.any((values != 0) & (values != 1)):
+        raise ValueError("observations must be a non-empty one-dimensional binary array.")
+    return values.astype(np.int64)
+
+
+def _open_unit(value: float, name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise ValueError(f"{name} must be a finite number strictly between zero and one.")
+    value = float(value)
+    if not np.isfinite(value) or not 0.0 < value < 1.0:
+        raise ValueError(f"{name} must be a finite number strictly between zero and one.")
+    return value
+
+
+def _ordered_probabilities(p0: float, p1: float) -> tuple[float, float]:
+    p0 = _open_unit(p0, "p0")
+    p1 = _open_unit(p1, "p1")
+    if p1 <= p0:
+        raise ValueError("p1 must be strictly greater than p0.")
+    return p0, p1
+
+
+def _positive_finite(value: float, name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise ValueError(f"{name} must be a positive finite number.")
+    value = float(value)
+    if not np.isfinite(value) or value <= 0.0:
+        raise ValueError(f"{name} must be a positive finite number.")
+    return value
+
+
+def _log_likelihood_increments(
+    values: NDArray[np.int64], p0: float, p1: float
+) -> NDArray[np.float64]:
+    return values * np.log(p1 / p0) + (1 - values) * np.log((1 - p1) / (1 - p0))
+
+
+def likelihood_ratio_path(
+    observations: ArrayLike, p0: float, p1: float, alpha: float
+) -> SequentialEvidence:
+    """Compute a simple-null versus simple-alternative likelihood-ratio path.
+
+    The returned e-values meet the declared simple-null/simple-alternative
+    contract; they do not establish unrestricted optional-stopping validity.
+    """
+
+    values = _binary_observations(observations)
+    p0, p1 = _ordered_probabilities(p0, p1)
+    alpha = _open_unit(alpha, "alpha")
+    increments = _log_likelihood_increments(values, p0, p1)
+    log_path = np.cumsum(increments, dtype=float)
+    e_values = np.exp(np.clip(log_path, -745.0, 709.0))
+    threshold = 1.0 / alpha
+    crossings = np.flatnonzero(e_values >= threshold)
+    first_crossing = int(crossings[0] + 1) if crossings.size else None
+    return SequentialEvidence(
+        log_likelihood_ratio=log_path,
+        e_values=e_values,
+        threshold=threshold,
+        first_crossing=first_crossing,
+        p0=p0,
+        p1=p1,
+        alpha=alpha,
+    )
+
+
+def cusum_change_detection(
+    observations: ArrayLike, p0: float, p1: float, threshold: float
+) -> CUSUMResult:
+    """Compute Page-style CUSUM scores for a declared upward probability change."""
+
+    values = _binary_observations(observations)
+    p0, p1 = _ordered_probabilities(p0, p1)
+    threshold = _positive_finite(threshold, "threshold")
+    increments = _log_likelihood_increments(values, p0, p1)
+    scores = np.empty(values.size, dtype=float)
+    running = 0.0
+    for index, increment in enumerate(increments):
+        running = max(0.0, running + float(increment))
+        scores[index] = running
+    alarms = np.flatnonzero(scores >= threshold)
+    first_alarm = int(alarms[0] + 1) if alarms.size else None
+    return CUSUMResult(
+        scores=scores,
+        threshold=threshold,
+        first_alarm=first_alarm,
+        p0=p0,
+        p1=p1,
+    )
