@@ -70,7 +70,22 @@ def test_likelihood_ratio_finds_extreme_alpha_crossing_in_log_space(
     )
 
     assert result.first_crossing == expected_crossing
+    assert np.isfinite(result.threshold)
     assert np.all(np.isfinite(result.e_values))
+    assert result.e_values[result.first_crossing - 1] >= result.threshold
+
+
+def test_likelihood_ratio_supports_ordered_subnormal_probabilities():
+    p0 = np.nextafter(0.0, 1.0)
+    p1 = np.nextafter(p0, 1.0)
+
+    result = likelihood_ratio_path([1, 0], p0=p0, p1=p1, alpha=0.05)
+
+    expected = np.cumsum(
+        [np.log(p1) - np.log(p0), np.log1p(-p1) - np.log1p(-p0)]
+    )
+    np.testing.assert_allclose(result.log_likelihood_ratio, expected)
+    assert np.all(np.isfinite(result.log_likelihood_ratio))
 
 
 @pytest.mark.parametrize(
@@ -120,6 +135,17 @@ def test_cusum_does_not_false_alarm_from_subnormal_probability_overflow():
 
     assert result.scores[0] == pytest.approx(np.log(0.5) - np.log(p0))
     assert np.isfinite(result.scores[0])
+    assert result.first_alarm is None
+
+
+def test_cusum_supports_ordered_subnormal_probabilities():
+    p0 = np.nextafter(0.0, 1.0)
+    p1 = np.nextafter(p0, 1.0)
+
+    result = cusum_change_detection([1, 0], p0=p0, p1=p1, threshold=1.0)
+
+    assert result.scores[0] == pytest.approx(np.log(p1) - np.log(p0))
+    assert np.all(np.isfinite(result.scores))
     assert result.first_alarm is None
 
 
