@@ -48,6 +48,8 @@ from .sequential import (
     cusum_change_detection,
     likelihood_ratio_path,
 )
+from .decision import PosteriorEdgeSummary, posterior_edge_summary
+from .risk import build_risk_frontier, conditional_value_at_risk
 
 __all__ = [
     "BetKind",
@@ -61,6 +63,7 @@ __all__ = [
     "FairnessResult",
     "MaxCountResult",
     "Pocket",
+    "PosteriorEdgeSummary",
     "PosteriorEstimate",
     "PowerEstimate",
     "RiskSummary",
@@ -71,6 +74,8 @@ __all__ = [
     "WheelSpec",
     "SpinDataset",
     "expected_net_return",
+    "build_risk_frontier",
+    "conditional_value_at_risk",
     "house_edge",
     "kelly_fraction",
     "likelihood_ratio_path",
@@ -83,6 +88,7 @@ __all__ = [
     "max_count_test",
     "monte_carlo_global_pvalue",
     "estimate_detection_power",
+    "posterior_edge_summary",
     "read_spin_csv",
     "run_full_analysis",
     "simulate_spin_counts",

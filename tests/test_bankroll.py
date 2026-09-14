@@ -407,6 +407,8 @@ def test_simulation_and_summary_are_immutable_and_path_dimensions_include_initia
         config.base_stake = 1
     assert summary.path_count == 4
     assert summary.spin_count == 3
+    assert np.isfinite(summary.terminal_cvar_shortfall)
+    assert summary.terminal_cvar_shortfall >= 0.0
 
 
 def test_risk_summary_maximum_drawdown_uses_running_path_peaks():
@@ -420,6 +422,7 @@ def test_risk_summary_maximum_drawdown_uses_running_path_peaks():
     assert summary.median_maximum_drawdown == pytest.approx(0.3)
     assert summary.probability_of_loss == pytest.approx(0.5)
     assert summary.probability_of_ruin == pytest.approx(0.0)
+    assert summary.terminal_cvar_shortfall == pytest.approx(10.0)
 
 
 def test_one_spin_mean_agrees_with_analytical_expectation_within_five_mc_standard_errors():

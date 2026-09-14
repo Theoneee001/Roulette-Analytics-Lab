@@ -205,6 +205,7 @@ class RiskSummary:
     terminal_standard_deviation: float
     terminal_percentile_5: float
     terminal_percentile_95: float
+    terminal_cvar_shortfall: float
     probability_of_loss: float
     probability_of_ruin: float
     expected_maximum_drawdown: float
@@ -358,7 +359,7 @@ def simulate_bankroll(
 
 
 def summarize_bankroll(simulation: BankrollSimulation) -> RiskSummary:
-    """Summarize terminal outcomes and per-path maximum drawdowns."""
+    """Summarize terminal outcomes, drawdowns, and non-negative shortfall CVaR."""
 
     if not isinstance(simulation, BankrollSimulation):
         raise TypeError("simulation must be a BankrollSimulation.")
@@ -373,12 +374,19 @@ def summarize_bankroll(simulation: BankrollSimulation) -> RiskSummary:
         where=running_peaks > 0.0,
     )
     maximum_drawdowns = drawdowns.max(axis=1)
+    terminal_shortfalls = np.maximum(
+        simulation.config.initial_bankroll - terminal, 0.0
+    )
+    # Local import avoids a module-import cycle with risk frontier composition.
+    from .risk import conditional_value_at_risk
+
     return RiskSummary(
         terminal_mean=float(np.mean(terminal)),
         terminal_median=float(np.median(terminal)),
         terminal_standard_deviation=float(np.std(terminal)),
         terminal_percentile_5=float(np.percentile(terminal, 5)),
         terminal_percentile_95=float(np.percentile(terminal, 95)),
+        terminal_cvar_shortfall=conditional_value_at_risk(terminal_shortfalls, 0.05),
         probability_of_loss=float(np.mean(terminal < simulation.config.initial_bankroll)),
         probability_of_ruin=float(np.mean(np.any(equity_paths <= 0.0, axis=1))),
         expected_maximum_drawdown=float(np.mean(maximum_drawdowns)),
