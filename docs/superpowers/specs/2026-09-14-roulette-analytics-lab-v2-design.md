@@ -1,6 +1,6 @@
 # Roulette Analytics Lab V2: Design Specification
 
-**Status:** Approved direction, implementation pending  
+**Status:** Approved for Project 1 implementation
 **Owner:** Jialiang Gong  
 **Primary audience:** Postgraduate admissions reviewers  
 **Research direction:** Statistical inference under selection, sequential observation, and model uncertainty  
@@ -15,6 +15,8 @@ V2 will turn the existing roulette portfolio into a stronger piece of applied st
 Roulette remains a compact teaching system. Its outcome space and contractual payouts are exact, while its observed probabilities must be inferred from finite data. That separation allows the project to demonstrate probability theory, statistical testing, Bayesian updating, stochastic processes, risk analysis, software engineering, and responsible communication without claiming a method for beating casinos.
 
 The upgrade must improve depth and presentation together. Advanced methods will be exposed through an interactive experiment rather than added as disconnected equations. Every headline result must remain traceable from mathematical definition to tested Python, generated output, report interpretation, and dashboard state.
+
+This specification covers only Project 1 of the execution manual's Applied Math & AI Portfolio. Requirements for the later EY risk-visualisation and AI-agent projects are outside this release and do not affect whether Roulette Analytics Lab is complete as Project 1.
 
 ## 2. Success Criteria
 
@@ -39,6 +41,8 @@ The existing Pearson chi-squared test, multinomial Monte Carlo calibration, maxi
 - The maximum-count test repeats the search for the hottest pocket inside each null simulation.
 - A pre-specified pocket can be analysed directly, but a data-selected pocket must use corrected or held-out evidence.
 - Effect size and power accompany p-values so that non-rejection is not described as proof of fairness.
+
+The existing random-walk and law-of-large-numbers experiments also remain required. They will connect single-spin expectation to cumulative bankroll drift and show why a finite path can move away from its expectation before stabilising in relative terms. V2 may improve their figures and interpretation, but it must not remove them.
 
 ### 3.2 Sequential Evidence
 
@@ -161,6 +165,8 @@ The executed notebook will follow the research argument in the same order as the
 The technical report will remain within 4,500 to 5,000 English prose words. It will gain a sharper research question, sequential inference, change-point, posterior decision, and risk-frontier sections by compressing repeated background material. The PDF will target 13 to 16 A4 pages with a restrained cover, consistent running headers, readable equations, numbered figures and tables, page-safe section breaks, and no decorative filler.
 
 The technical blog will focus on one argument: why an apparent edge can disappear after selection correction, sequential correction, and posterior uncertainty. README, methodology map, AI workflow, application materials, visual QA, and the deliverables checklist will be updated to reflect V2 without exaggerating individual contribution or research certainty.
+
+Project 1 is not complete unless the final repository also retains every execution-manual baseline: Python implementation of Kelly, chi-squared testing and random-walk simulation; adjustable initial bankroll, payout odds and stop-loss; live probability or bankroll curves; a detailed technical blog covering mathematics, code and results; and a README containing background, methods, usage, screenshots and a truthful AI-use statement.
 
 ## 7. Error Handling and Performance
 
