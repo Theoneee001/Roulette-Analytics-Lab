@@ -4,6 +4,15 @@ import pytest
 from roulette_lab.sequential import cusum_change_detection, likelihood_ratio_path
 
 
+def assert_displayed_crossing_matches_first_crossing(result):
+    displayed_crossings = np.flatnonzero(result.e_values >= result.threshold)
+    displayed_first = (
+        int(displayed_crossings[0] + 1) if displayed_crossings.size else None
+    )
+
+    assert displayed_first == result.first_crossing
+
+
 def test_sequential_public_api_is_exported_from_package():
     from roulette_lab import (
         CUSUMResult,
@@ -26,6 +35,7 @@ def test_all_hits_have_exact_log_likelihood_path():
     np.testing.assert_allclose(result.e_values, np.exp(expected))
     assert result.threshold == pytest.approx(20.0)
     assert result.first_crossing is None
+    assert_displayed_crossing_matches_first_crossing(result)
 
 
 @pytest.mark.parametrize("p0,p1", [(0, 0.1), (1, 0.9), (0.1, 0.1), (0.2, 0.1)])
@@ -38,6 +48,7 @@ def test_likelihood_ratio_reports_one_indexed_first_threshold_crossing():
     result = likelihood_ratio_path([1, 1, 1], p0=1 / 37, p1=0.06, alpha=0.5)
 
     assert result.first_crossing == 1
+    assert_displayed_crossing_matches_first_crossing(result)
 
 
 def test_likelihood_ratio_keeps_subnormal_probability_increment_finite():
@@ -73,6 +84,20 @@ def test_likelihood_ratio_finds_extreme_alpha_crossing_in_log_space(
     assert np.isfinite(result.threshold)
     assert np.all(np.isfinite(result.e_values))
     assert result.e_values[result.first_crossing - 1] >= result.threshold
+    assert_displayed_crossing_matches_first_crossing(result)
+
+
+def test_subnormal_alpha_display_marks_only_the_true_crossing():
+    p0 = np.nextafter(0.0, 1.0)
+
+    result = likelihood_ratio_path([1, 1], p0=p0, p1=0.5, alpha=p0)
+
+    assert result.first_crossing == 2
+    assert np.all(np.isfinite(result.e_values))
+    assert np.isfinite(result.threshold)
+    assert result.e_values[0] < result.threshold
+    assert result.e_values[1] >= result.threshold
+    assert_displayed_crossing_matches_first_crossing(result)
 
 
 def test_likelihood_ratio_supports_ordered_subnormal_probabilities():

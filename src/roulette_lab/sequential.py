@@ -9,6 +9,7 @@ from numpy.typing import ArrayLike, NDArray
 
 _MAX_FLOAT = np.finfo(float).max
 _LOG_MAX_FLOAT = float(np.log(_MAX_FLOAT))
+_PRE_MAX_FLOAT = np.nextafter(_MAX_FLOAT, 0.0)
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,6 +95,9 @@ def likelihood_ratio_path(
     Thresholds are representationally capped at the largest finite float when
     ``alpha`` is below the reciprocal range of that float. Crossing detection
     always uses the uncapped log-likelihood path and ``-log(alpha)``.
+    In that extreme range, displayed pre-crossing e-values that would overflow
+    use the next float below the cap; values at and after the true crossing use
+    the cap itself, so the displayed crossing agrees with ``first_crossing``.
     """
 
     values = _binary_observations(observations)
@@ -102,13 +106,14 @@ def likelihood_ratio_path(
     increments = _log_likelihood_increments(values, p0, p1)
     log_path = np.cumsum(increments, dtype=float)
     e_values = np.exp(np.minimum(log_path, _LOG_MAX_FLOAT))
-    e_values[log_path >= _LOG_MAX_FLOAT] = _MAX_FLOAT
     log_threshold = float(-np.log(alpha))
-    threshold = (
-        _MAX_FLOAT
-        if log_threshold >= _LOG_MAX_FLOAT
-        else float(np.exp(log_threshold))
-    )
+    if log_threshold > _LOG_MAX_FLOAT:
+        threshold = _MAX_FLOAT
+        e_values[log_path >= _LOG_MAX_FLOAT] = _PRE_MAX_FLOAT
+        e_values[log_path >= log_threshold] = _MAX_FLOAT
+    else:
+        threshold = float(np.exp(log_threshold))
+        e_values[log_path >= _LOG_MAX_FLOAT] = _MAX_FLOAT
     crossings = np.flatnonzero(log_path >= log_threshold)
     first_crossing = int(crossings[0] + 1) if crossings.size else None
     return SequentialEvidence(
