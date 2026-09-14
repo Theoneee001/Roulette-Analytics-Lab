@@ -75,7 +75,9 @@ def _positive_finite(value: float, name: str) -> float:
 def _log_likelihood_increments(
     values: NDArray[np.int64], p0: float, p1: float
 ) -> NDArray[np.float64]:
-    return values * np.log(p1 / p0) + (1 - values) * np.log((1 - p1) / (1 - p0))
+    hit_increment = np.log(p1) - np.log(p0)
+    miss_increment = np.log1p(-p1) - np.log1p(-p0)
+    return np.where(values == 1, hit_increment, miss_increment)
 
 
 def likelihood_ratio_path(
@@ -94,7 +96,7 @@ def likelihood_ratio_path(
     log_path = np.cumsum(increments, dtype=float)
     e_values = np.exp(np.clip(log_path, -745.0, 709.0))
     threshold = 1.0 / alpha
-    crossings = np.flatnonzero(e_values >= threshold)
+    crossings = np.flatnonzero(log_path >= -np.log(alpha))
     first_crossing = int(crossings[0] + 1) if crossings.size else None
     return SequentialEvidence(
         log_likelihood_ratio=log_path,
