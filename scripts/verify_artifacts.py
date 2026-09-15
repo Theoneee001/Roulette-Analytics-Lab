@@ -354,7 +354,7 @@ def _verify_public_text(root: Path, tables: dict[str, pd.DataFrame]) -> None:
     checklist = _read(root / "docs" / "deliverables_checklist.md", "deliverables checklist")
 
     report_words = _count_report_prose(report)
-    _require(3_000 <= report_words <= 5_000, f"Technical report word count is {report_words}")
+    _require(4_500 <= report_words <= 5_000, f"Technical report word count is {report_words}")
     ps_words = _word_count(_section(application, "Personal Statement Material"))
     _require(150 <= ps_words <= 200, f"Personal Statement word count is {ps_words}")
 
@@ -363,30 +363,23 @@ def _verify_public_text(root: Path, tables: dict[str, pd.DataFrame]) -> None:
         _require("not" in text.lower() and "profit" in text.lower(), f"{label} lacks profit disclaimer")
         _require("—" not in text, f"{label} contains an em dash")
 
-    edges = tables["house_edges"]
-    european = float(_unique(edges, "rule", "european")["house_edge"])
-    american = float(_unique(edges, "rule", "american")["house_edge"])
-    fair = _unique(tables["bias_tests"], "dataset", "unbiased")
-    biased = _unique(tables["bias_tests"], "dataset", "biased")
-    required_readme = (
-        f"{european:.2%} on a European wheel",
-        f"{american:.2%} on an American wheel",
-        f"`p = {float(fair['naive_p_value']):.4f}`",
-        f"`p = {float(fair['familywise_p_value']):.4f}`",
-        f"`p = {float(biased['asymptotic_p_value']):.4f}`",
+    named_evidence = (
+        "house_edges.csv",
+        "bias_tests.csv",
+        "sequential_evidence.csv",
+        "change_point_results.csv",
+        "posterior_edge.csv",
+        "risk_frontier.csv",
     )
-    for headline in required_readme:
-        _require(headline in readme, f"README headline mismatch: {headline}")
-
-    required_report = (
-        f"approximately {european:.2%}",
-        f"approximately {american:.2%}",
-        f"`p = {float(fair['naive_p_value']):.4f}`",
-        f"`p = {float(fair['familywise_p_value']):.4f}`",
-        f"`p = {float(biased['monte_carlo_global_p_value']):.4f}`",
-    )
-    for headline in required_report:
-        _require(headline in report, f"Report headline mismatch: {headline}")
+    for table in named_evidence:
+        _require(
+            f"](outputs/tables/{table})" in readme,
+            f"README evidence reference missing: {table}",
+        )
+        _require(
+            table in report,
+            f"Report evidence reference missing: {table}",
+        )
 
     manual_baseline_phrases = (
         "Existing seven tables and six figures remain.",

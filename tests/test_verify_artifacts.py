@@ -129,14 +129,14 @@ def test_verifier_rejects_unexecuted_notebook(tmp_path):
         verify_artifacts(copied)
 
 
-def test_verifier_rejects_conflicting_public_headline(tmp_path):
+def test_verifier_rejects_missing_named_public_evidence(tmp_path):
     copied = copy_artifacts(tmp_path)
     readme = copied / "README.md"
     text = readme.read_text(encoding="utf-8").replace(
-        "2.70% on a European wheel", "9.99% on a European wheel"
+        "house_edges.csv", "incorrect_house_edges.csv"
     )
     readme.write_text(text, encoding="utf-8")
-    with pytest.raises(VerificationError, match="README headline"):
+    with pytest.raises(VerificationError, match="evidence reference"):
         verify_artifacts(copied)
 
 

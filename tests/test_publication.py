@@ -36,22 +36,22 @@ def count_words(text: str) -> int:
     return len(re.findall(r"[A-Za-z]+(?:['-][A-Za-z]+)*|[0-9]+(?:\.[0-9]+)?%?", text))
 
 
-def test_report_prose_word_count_is_in_range():
-    assert 3_000 <= count_report_prose(ROOT / "report/technical_report.md") <= 5_000
+def test_report_prose_word_count_is_in_v2_range():
+    assert 4_500 <= count_report_prose(ROOT / "report/technical_report.md") <= 5_000
 
 
-def test_report_has_required_ordered_sections():
+def test_report_has_v2_research_sections_in_order():
     text = (ROOT / "report/technical_report.md").read_text(encoding="utf-8")
     headings = [
         "Executive Summary",
-        "Provenance",
-        "Problem Definition",
-        "Mathematical Model",
-        "Implementation",
-        "Unbiased-Wheel Results",
-        "Bias Detection and Correction",
-        "Strategy Risk",
-        "Product Design",
+        "Research Question and Provenance",
+        "Probability Contract",
+        "Fixed-Horizon Inference",
+        "Sequential Evidence",
+        "Change-Point Diagnostics",
+        "Posterior Decisions",
+        "Risk Frontier",
+        "Software and Product Design",
         "Application Value",
         "Limitations",
         "Conclusion",
@@ -59,6 +59,19 @@ def test_report_has_required_ordered_sections():
     ]
     positions = [text.index(f"## {heading}") for heading in headings]
     assert positions == sorted(positions)
+
+
+def test_report_headline_evidence_names_generated_csv_tables():
+    report = (ROOT / "report/technical_report.md").read_text(encoding="utf-8")
+    for table in [
+        "house_edges.csv",
+        "bias_tests.csv",
+        "sequential_evidence.csv",
+        "change_point_results.csv",
+        "posterior_edge.csv",
+        "risk_frontier.csv",
+    ]:
+        assert table in report
 
 
 def test_personal_statement_material_is_in_range():

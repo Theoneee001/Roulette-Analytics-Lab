@@ -4,7 +4,7 @@
 
 [Open the live Streamlit dashboard](https://roulette-analytics-lab.streamlit.app/)
 
-Roulette Analytics Lab is a reproducible Python portfolio project built from the mathematical questions studied in the University of Manchester MATH20062 Group 40 report. It turns a static academic investigation into a tested package, a deterministic analysis pipeline, an executable notebook, and a Streamlit dashboard. The project asks three linked questions: what the rules imply before any wheel is spun, what observed spins can tell us about fairness, and how uncertainty changes bankroll risk.
+Roulette Analytics Lab is a reproducible Python portfolio project built from the mathematical questions studied in the University of Manchester MATH20062 Group 40 report. It turns a static academic investigation into a tested package, a deterministic analysis pipeline, an executed notebook, a CSV-backed PDF report, and a Streamlit dashboard. It asks how casino roulette rules determine expected value, what fixed-horizon evidence says about fairness, and how selection, repeated observation, changing probabilities, and uncertainty affect a decision.
 
 This is an educational probability project, not a system for making money from gambling. Under a fair wheel and standard casino payouts, every conventional bet has negative expected net return.
 
@@ -21,11 +21,12 @@ The individual extension is an independent Python reimplementation from the pape
 3. How quickly does a running frequency approach its theoretical probability?
 4. Can a chi-squared test detect a wheel with one elevated pocket probability?
 5. Why is testing the hottest observed pocket as though it were chosen in advance invalid?
-6. How do flat betting, progression systems, and conditional Kelly staking alter the distribution of bankroll outcomes?
+6. How do fixed-horizon, post-selection, sequential, and change-point questions require different statistical procedures?
+7. What does Kelly mean under an assumed edge, and how do posterior uncertainty, drawdown, and CVaR alter a constrained comparison?
 
 ## Mathematical methods
 
-The package combines finite probability spaces, expectation, variance, random walk simulation, categorical goodness-of-fit testing, Monte Carlo calibration, multiple-testing correction, Bayesian Dirichlet updating, and conditional Kelly optimization. Exact enumeration is used when the wheel rules are fully specified. Simulation is used for path-dependent quantities such as drawdown and for sampling distributions that are awkward to derive analytically.
+The package combines finite probability spaces, expectation, random walks, law-of-large-numbers convergence, categorical goodness-of-fit testing, Monte Carlo calibration, post-selection correction, sequential likelihood-ratio evidence, Page-style CUSUM diagnostics, Bayesian updating, conditional Kelly sizing, and CVaR risk analysis. Exact enumeration is used when the wheel rules are fully specified. Simulation is used for path-dependent quantities and sampling distributions that are awkward to derive analytically.
 
 For a unit stake with net payout odds `b` and win probability `p`, the expected net return is
 
@@ -33,7 +34,7 @@ For a unit stake with net payout odds `b` and win probability `p`, the expected 
 E[X] = p b - (1 - p).
 ```
 
-The standard European straight bet has `p = 1/37` and `b = 35`, so `E[X] = -1/37`, a house edge of about 2.70%. The American wheel has 38 pockets and a house edge of about 5.26% for the same advertised payout. The full Kelly fraction, when the assumed `p` is known and greater than the break-even probability, is `(bp - (1-p))/b`. In this project it is treated as a conditional log-growth result, not a guarantee and not an estimate of a real casino advantage.
+The standard European straight bet has `p = 1/37` and `b = 35`, so `E[X] = -1/37`. The generated [`house_edges.csv`](outputs/tables/house_edges.csv) table holds all displayed house-edge values. The full Kelly fraction, when the assumed `p` is known and greater than break-even, is `(bp - (1-p))/b`. Here, optimal means constrained expected-log-growth under the assumed edge and model. It is not a guarantee or an estimate of a real casino advantage. Fair roulette has zero Kelly because its standard payout sits below break-even.
 
 ## Architecture
 
@@ -92,19 +93,15 @@ Run the tests:
 
 ## Dashboard controls
 
-The four tabs move from rules to evidence to decisions. **Wheel & Bets** compares wheel type, bet geometry, payout, and special European rules. **Fairness Lab** accepts generated examples or strict CSV input, displays residuals, and contrasts global and post-selection-aware tests. **Bankroll Simulator** exposes starting bankroll, stake, number of spins, path count, stop-loss, take-profit, table limit, payout assumptions, and staking strategy. **Methods & Limits** states the assumptions needed to interpret each output.
+The five views move from rules to evidence to decisions. **Wheel & Bets** compares wheel type, bet geometry, payout, and special European rules. **Fairness Lab** accepts generated examples or strict CSV input, displays residuals, and contrasts global and post-selection-aware tests. **Sequential Lab** separates fixed-horizon evidence, a pre-specified likelihood-ratio monitor, and targeted CUSUM diagnostics. **Bankroll Simulator** exposes starting bankroll, stake, number of spins, path count, stop-loss, take-profit, table limit, payout assumptions, and staking strategy. **Methods & Limits** states the assumptions needed to interpret each output.
 
 Custom payout odds are deliberately labelled hypothetical and simulation-only. They never overwrite the casino-standard analytical tables.
 
 ## Published results
 
-The standard straight-bet house edge is 2.70% on a European wheel and 5.26% on an American wheel. For a European even-money bet, La Partage and En Prison reduce the exact edge to about 1.35% under the implemented rules.
+All publication headline values are loaded from named generated CSVs, never recomputed or typed into prose. [`house_edges.csv`](outputs/tables/house_edges.csv) records the casino contract. [`bias_tests.csv`](outputs/tables/bias_tests.csv) records fixed-horizon global, naive, and family-wise evidence. [`sequential_evidence.csv`](outputs/tables/sequential_evidence.csv) records the pre-specified likelihood-ratio process. [`change_point_results.csv`](outputs/tables/change_point_results.csv) records CUSUM alarms and operating characteristics for synthetic scenarios. [`posterior_edge.csv`](outputs/tables/posterior_edge.csv) records the probability input, interval, break-even comparison, and explicitly heuristic lower-quantile Kelly. [`risk_frontier.csv`](outputs/tables/risk_frontier.csv) records common-random-number growth, loss, drawdown, and CVaR comparisons.
 
-In the reproducible fair sample of 1,000 spins, pocket 32 appeared 39 times. A naive one-pocket test gives `p = 0.0164`, but that pocket was selected because it was the hottest. The family-wise Monte Carlo value is `p = 0.4837`, and the global chi-squared asymptotic value is `p = 0.3978`; neither supports a fairness rejection.
-
-In the synthetic biased sample, pocket 17 has true probability 0.060 and appears 61 times. The global chi-squared asymptotic value is `p = 0.0029`, while the Monte Carlo global value is `p = 0.0044`. The family-wise hottest-pocket value is about `0.0001`. This sample is labelled synthetic throughout.
-
-The strategy comparison is a stress test under that favourable synthetic pocket, not evidence of a real-world edge. Across 3,000 paths of 300 spins, Martingale has a median terminal bankroll of 450 from a starting bankroll of 1,000 and a 65.57% probability of finishing below the start. Quarter Kelly has a median of 2,198 and a 1.67% probability of loss in this same assumed scenario. That contrast shows how sizing and constraints change risk; it does not validate the assumed probability.
+The report explains the difference between a fixed-horizon question, a post-selected claim, a sequential stopping rule, and a change-point diagnostic. It also documents the CVaR convention: non-negative terminal shortfall is `max(initial bankroll - terminal equity, 0)`, and larger values are worse. The synthetic favourable scenario is for stress-testing decision rules, not evidence of a real casino edge.
 
 ## Screenshots
 
@@ -122,7 +119,7 @@ Existing seven tables and six figures remain. The final release contains eleven 
 
 ## Reproducibility
 
-Every synthetic dataset and Monte Carlo procedure uses a recorded seed. Publication tables are CSV files, and the report builder reads headline values from those files rather than duplicating numbers by hand. The notebook is generated with stable cell identifiers and executed before release. Dependency versions are pinned in `requirements-lock.txt`. The final verifier checks tests, output freshness, notebook execution, report presence, and package contents.
+Every synthetic dataset and Monte Carlo procedure uses a recorded seed. Publication tables are CSV files, and the report builder resolves headline markers from those files rather than duplicating numbers by hand. The notebook imports production functions, loads generated tables, has stable cell identifiers, and is executed before release. Dependency versions are pinned in `requirements-lock.txt`. The final verifier checks tests, output freshness, notebook execution, report presence, and package contents.
 
 Statistical reproducibility does not remove model uncertainty. A fixed seed reproduces a computation; it does not prove that an assumed pocket probability describes a real wheel.
 

@@ -20,6 +20,10 @@ This map connects the mathematics to executable code, tests, tracked evidence an
 | Kelly fraction | $f^*=\max(0,[bp-(1-p)]/b)$ | `kelly_fraction` | `test_bets.py::test_kelly_requires_probability_above_break_even` | Kelly sensitivity table | Positive straight-up allocation requires $p>1/36$ at 35:1 net odds. |
 | Bankroll recursion | $W_{t+1}=W_t+s_tR_{t+1}$ | `simulate_bankroll` | `test_bankroll.py` | `06_bankroll_risk.png` | Strategy rules change path risk, not the underlying casino payout. |
 | Maximum drawdown | $\max_t(P_t-W_t)/P_t$ | `summarize_bankroll` | `test_bankroll.py` | `06_bankroll_risk.png` | Running-peak loss captures path pain hidden by terminal averages. |
+| Sequential likelihood ratio | $\log LR_t=\sum_s[X_s\log(p_1/p_0)+(1-X_s)\log((1-p_1)/(1-p_0))]$ | `likelihood_ratio_path` | `test_sequential.py` | `07_sequential_evidence.png` | A pre-specified simple-null/simple-alternative monitor has a different contract from repeated fixed-horizon p-values. |
+| Page-style CUSUM | $S_t=\max(0,S_{t-1}+\log LR_t-\log LR_{t-1})$ | `cusum_change_detection` | `test_sequential.py` | `08_change_point_cusum.png` | A targeted upward-change diagnostic reports alarms and simulated delay; it does not identify a physical cause. |
+| Posterior edge | $p\mid X\sim Beta(a+x,b+n-x)$ | `posterior_edge_summary` | `test_decision.py` | `09_posterior_edge.png` | Posterior mean and interval distinguish a probability estimate from certainty; lower-quantile Kelly is explicitly heuristic. |
+| CVaR shortfall | $\operatorname{CVaR}_\alpha(L)=\operatorname{mean}(L\text{ in worst tail})$ | `conditional_value_at_risk`, `build_risk_frontier` | `test_risk.py` | `10_risk_frontier.png` | Loss is non-negative terminal shortfall $\max(W_0-W_T,0)$, so larger CVaR is worse. |
 
 ## Source-report corrections
 
@@ -27,4 +31,3 @@ The source report supplied the mathematical and conceptual starting point. Durin
 
 1. The source report treated a fair European straight-up bet as break-even. With a 35:1 net payout and 37 pockets, the exact expected net return is $-w/37$. Unit tests compare this identity on both European and American wheels.
 2. The source report used a binomial tail for the largest observed count. Because that pocket was selected after observing the sample, the portfolio reports the naive tail as a reference and uses a full multinomial maximum-count simulation for the selected claim.
-

@@ -13,11 +13,15 @@ def test_notebook_is_executed_and_contains_required_sections():
     )
 
     for title in [
-        "House Edge",
-        "Law of Large Numbers",
-        "Bias Detection",
-        "Kelly Criterion",
-        "Bankroll Risk",
+        "Exact Wheel Economics",
+        "Random Walk and Law of Large Numbers",
+        "Fixed-Horizon Fairness",
+        "Selection Correction",
+        "Sequential Evidence",
+        "CUSUM Change-Point Diagnostic",
+        "Posterior Edge Uncertainty",
+        "Robust Kelly Decisions",
+        "CVaR Risk Frontier",
         "Limitations",
     ]:
         assert title in headings
@@ -35,6 +39,11 @@ def test_notebook_calls_shared_analysis_instead_of_reimplementing_formulas():
     assert "run_full_analysis" in code
     assert "expected_net_return" in code
     assert "max_count_test" in code
+    assert "likelihood_ratio_path" in code
+    assert "cusum_change_detection" in code
+    assert "posterior_edge_summary" in code
+    assert "build_risk_frontier" in code
+    assert "outputs" in code and "tables" in code
     assert "def expected" not in code
     assert "def kelly" not in code
 
@@ -62,4 +71,3 @@ def test_notebook_metadata_is_stable_and_contains_no_execution_timing():
     assert notebook.metadata.kernelspec.name == "python3"
     assert notebook.metadata.language_info.version == "3.12"
     assert all("execution" not in cell.metadata for cell in notebook.cells)
-

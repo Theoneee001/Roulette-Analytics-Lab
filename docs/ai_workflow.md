@@ -10,10 +10,10 @@ AI tools were used as engineering assistants during the portfolio extension. The
 2. Mathematical behavior was expressed in unit tests before or alongside implementation.
 3. Domain modules were kept separate so wheel rules, betting geometry, inference, and simulation could be checked independently.
 4. Deterministic scripts generated CSV tables and figures from fixed seeds.
-5. Report numbers were loaded from those CSV files instead of being typed into publication code.
+5. Report headline markers were resolved from named generated CSV files instead of being typed or recomputed in publication code.
 6. The notebook was rebuilt and executed in a clean kernel.
 7. The Streamlit interface was checked at desktop and mobile widths, including browser console output.
-8. Public prose was scanned for formula errors, unsupported certainty, missing attribution, and repetitive AI-style wording.
+8. Public prose was scanned for formula errors, unsupported certainty, missing attribution, repetitive AI-style wording, and em dashes. The requested Rust humanizer detector was attempted before and after publication editing; this workstation could not link it because the active macOS Command Line Tools path is missing. The build failure and equivalent transparent checks are recorded in `task-6-report.md`.
 
 ## Verification boundary
 
@@ -30,4 +30,3 @@ An AI suggestion was accepted only after one or more of the following checks: an
 ## Reproducible evidence
 
 The strongest evidence in this repository is executable. Tests check wheel probability mass, bet coverage, special rules, inference, bankroll state transitions, notebook structure, and publication requirements. Seeds, package versions, source checksums, and generated artifacts are recorded. This workflow makes AI use visible and auditable while keeping responsibility for the final claims with the author.
-

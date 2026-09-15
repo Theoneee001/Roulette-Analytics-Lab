@@ -32,7 +32,7 @@ from reportlab.platypus import (
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "report" / "technical_report.md"
 TARGET = ROOT / "report" / "technical_report.pdf"
-GREEN = colors.HexColor("#163F35")
+GREEN = colors.HexColor("#24342F")
 RED = colors.HexColor("#A33C35")
 GOLD = colors.HexColor("#B78A3E")
 INK = colors.HexColor("#26332F")
@@ -43,6 +43,29 @@ PAPER = colors.HexColor("#FAF8F2")
 def _rows(path: Path) -> list[dict[str, str]]:
     with path.open(newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle))
+
+
+_MARKER = re.compile(
+    r"\{\{(?P<table>[a-z_]+\.csv)\|(?P<filter>[a-z_]+=[^|]+)\|(?P<column>[a-z_]+)\|(?P<format>[^}]+)\}\}"
+)
+
+
+def resolve_csv_markers(text: str) -> str:
+    """Resolve report headline markers from named generated CSV evidence."""
+
+    def replace(match: re.Match[str]) -> str:
+        table = ROOT / "outputs" / "tables" / match.group("table")
+        field, expected = match.group("filter").split("=", 1)
+        rows = _rows(table)
+        selected = [row for row in rows if row.get(field) == expected]
+        values = {row[match.group("column")] for row in selected}
+        if len(values) != 1:
+            raise ValueError(
+                f"Expected one evidence value for {match.group(0)}, found {len(values)}."
+            )
+        return format(float(values.pop()), match.group("format"))
+
+    return _MARKER.sub(replace, text)
 
 
 def load_headline_results() -> list[tuple[str, str]]:
@@ -219,10 +242,16 @@ def _footer(canvas, document) -> None:
     width, _ = A4
     canvas.setStrokeColor(colors.HexColor("#D8D7D1"))
     canvas.line(18 * mm, 14 * mm, width - 18 * mm, 14 * mm)
+    canvas.setStrokeColor(RED)
+    canvas.line(18 * mm, A4[1] - 14 * mm, width - 18 * mm, A4[1] - 14 * mm)
     canvas.setFillColor(MUTED)
     canvas.setFont("Helvetica", 7.5)
     canvas.drawString(18 * mm, 9 * mm, "Roulette Analytics Lab | Jialiang Gong")
     canvas.drawRightString(width - 18 * mm, 9 * mm, f"Page {document.page}")
+    if document.page > 1:
+        canvas.setFillColor(MUTED)
+        canvas.setFont("Helvetica", 7.5)
+        canvas.drawString(18 * mm, A4[1] - 11 * mm, "Roulette Analytics Lab V2 | Research report")
     canvas.restoreState()
 
 
@@ -252,6 +281,7 @@ def markdown_story(text: str, styles: dict[str, ParagraphStyle]):
     in_code = False
     seen_title = False
     inserted_metrics = False
+    cover_closed = False
 
     def flush_paragraph() -> None:
         if paragraph_lines:
@@ -313,12 +343,18 @@ def markdown_story(text: str, styles: dict[str, ParagraphStyle]):
             if heading == "A Statistical Laboratory for Roulette Bias, Bankroll Risk and Decision-Making":
                 story.append(Paragraph(_inline(heading), styles["subtitle"]))
                 continue
+            if not cover_closed:
+                story.append(Spacer(1, 58 * mm))
+                story.append(Paragraph("Independent Python research extension", styles["subtitle"]))
+                story.append(Paragraph("University of Manchester mathematics provenance recorded in docs/provenance.md", styles["meta"]))
+                story.append(PageBreak())
+                cover_closed = True
             if not inserted_metrics:
                 story.append(_metrics_table(styles))
                 story.append(Spacer(1, 4 * mm))
                 story.append(
                     Paragraph(
-                        "Verified headline results loaded from generated CSV tables",
+                        "Table 1. Verified headline results loaded from named generated CSV tables",
                         styles["caption"],
                     )
                 )
@@ -366,7 +402,7 @@ def build() -> Path:
         pageCompression=1,
     )
     styles = _styles()
-    story = markdown_story(SOURCE.read_text(encoding="utf-8"), styles)
+    story = markdown_story(resolve_csv_markers(SOURCE.read_text(encoding="utf-8")), styles)
     document.build(story, onFirstPage=_footer, onLaterPages=_footer)
     return TARGET
 
