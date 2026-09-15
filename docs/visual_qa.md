@@ -17,22 +17,22 @@ The responsive review used a 390x844 device viewport. An initial capture exposed
 
 The final screenshot was captured through Chrome's device emulation after the built-in screenshot transport produced incorrect clipping metadata. It was inspected at original resolution and saved as `docs/assets/dashboard-mobile.png`, a true 390x844 PNG. The fourth tab remains available through the standard horizontal tab scroll on narrow screens; content does not overlap.
 
-## Online deployment check
+## Online deployment status
 
-The production app was deployed from `main/app.py` on Streamlit Community Cloud with Python 3.12 and is available at [roulette-analytics-lab.streamlit.app](https://roulette-analytics-lab.streamlit.app/). Streamlit's sharing settings identify the app as public and searchable. A separate anonymous HTTP session completed the platform's session handshake and returned status 200.
-
-The online review repeated the critical workflows at 1440x1000 and 390x844. All four tabs rendered. The biased repository CSV uploaded successfully and selected pocket 17 as the hottest pocket. Changing the bankroll strategy to quarter Kelly and raising the estimated win probability to `0.06000` recomputed terminal wealth, loss probability, and drawdown. The Methods & Limits tab retained the expected-value formula, selection-aware testing explanation, Kelly caveat, and responsible-use warning. Browser logs contained no errors or warnings after the completed checks.
+The configured Streamlit target is [roulette-analytics-lab.streamlit.app](https://roulette-analytics-lab.streamlit.app/). The current endpoint presents an authentication boundary, so prior owner-session checks do not establish anonymous availability. Public access is pending public-access verification in Task 7. Until that release check runs, repository copy treats the URL as a deployment target rather than a public live demonstration.
 
 ## PDF check
 
-`report/technical_report.pdf` was rendered to a contact sheet and inspected across all 11 pages. Pages 1, 7, 10, and 11 were also checked at higher resolution because they contain the metric panel, dense figures, a section boundary, and references. The review found:
+`report/technical_report.pdf` has 14 pages. Each page was rendered to PNG at 144 DPI and inspected in four contact sheets. Pages 4 and 10 were also checked at the original 1191x1684 render size because the previous PDF had dropped the first character of text at those boundaries. The final SHA-256 is `9245e425340bfe5ee24775fc72f45132d83f248551d43f86296f1cdd049514d5`. The review found:
 
 - A4 page size with consistent page numbers and footer rules;
-- readable equations, captions, labels, tables, and six nonblank figures;
-- no cropped text, broken glyphs, blank plots, orphan headings, or incoherent overlaps;
-- a clean page break before Conclusion, keeping the final argument and References together;
-- stable output: two consecutive PDF builds produced the same SHA-256 hash.
+- readable equations, captions, labels, the six-row source table, and nine nonblank report figures;
+- unique figure numbering in order from Figure 1 through Figure 9;
+- `Probability Contract` at the start of page 4 with its first paragraph, not stranded on page 3;
+- complete opening text on pages 4 and 10, with no dropped characters, cropped text, broken glyphs, orphan headings, or overlaps;
+- a well-filled page 13 containing Application Value and Limitations, followed by Conclusion and References on page 14;
+- text extraction from all pages with every continuation starting at a complete source paragraph or figure caption.
 
 ## Accepted limitations
 
-Streamlit's tab strip scrolls horizontally on a phone because four descriptive labels cannot remain readable in 390 pixels. This is an intentional native interaction, not hidden overflow. Owners see Streamlit's management control over the lower corner of the app; ordinary viewers do not receive that owner-only overlay.
+Streamlit's tab strip scrolls horizontally on a phone because four descriptive labels cannot remain readable in 390 pixels. This is an intentional native interaction, not hidden overflow. Owner sessions can display Streamlit's management control over the lower corner; that control is not part of the application content assessed in the local screenshots.

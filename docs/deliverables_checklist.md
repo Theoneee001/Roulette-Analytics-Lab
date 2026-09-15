@@ -14,7 +14,7 @@ This checklist maps the execution manual's Project 1 expectations to repository 
 | Real-time curves | Probability, residual, and bankroll charts | [`dashboard-desktop.png`](assets/dashboard-desktop.png), [`visual_qa.md`](visual_qa.md) | Complete |
 | Responsive design | Desktop and 390x844 evidence | [`dashboard-desktop.png`](assets/dashboard-desktop.png), [`dashboard-mobile.png`](assets/dashboard-mobile.png) | Complete |
 | Technical blog | Mathematics, implementation, results, and limits | [`technical_blog.md`](technical_blog.md) | Complete |
-| Full technical report | 4,000+ prose words and 11-page A4 PDF | [`technical_report.md`](../report/technical_report.md), [`technical_report.pdf`](../report/technical_report.pdf) | Complete |
+| Full technical report | 4,500-5,000 prose words and 13-16 page A4 PDF | [`technical_report.md`](../report/technical_report.md), [`technical_report.pdf`](../report/technical_report.pdf) | Complete |
 | GitHub-ready repository | README, licence, lock file, commands, CI | [`README.md`](../README.md), [`LICENSE`](../LICENSE), [`requirements-lock.txt`](../requirements-lock.txt), [`reproducibility.yml`](../.github/workflows/reproducibility.yml) | Complete |
 | Code reproducibility | Fixed seeds and permanent cross-artifact checks | [`run_analysis.py`](../scripts/run_analysis.py), [`verify_artifacts.py`](../scripts/verify_artifacts.py) | Complete |
 | Data | Fair and biased teaching datasets with strict schema | [`example_unbiased_spins.csv`](../data/example_unbiased_spins.csv), [`example_biased_spins.csv`](../data/example_biased_spins.csv), [`README`](../data/README.md) | Complete |
@@ -23,8 +23,8 @@ This checklist maps the execution manual's Project 1 expectations to repository 
 | AI capability evidence | Assisted workflow plus verification boundary | [`ai_workflow.md`](ai_workflow.md) | Complete |
 | Application value | CV, PS, interview, contribution, and programme maps | [`application_materials.md`](application_materials.md) | Complete |
 | Responsible framing | No profit promise and explicit limitations | [`README.md`](../README.md), [`technical_report.md`](../report/technical_report.md), [`app.py`](../app.py) | Complete |
-| Online demonstration | Public Streamlit URL | [Live dashboard](https://roulette-analytics-lab.streamlit.app/) | Complete |
+| Online demonstration | Task 7 release checklist item | [Streamlit deployment target](https://roulette-analytics-lab.streamlit.app/) | Pending public-access verification |
 
 ## Release gate
 
-The release is ready only when all automated tests pass, the notebook executes, publication outputs regenerate without drift, the PDF renders cleanly, desktop and mobile dashboard views are checked, the public dashboard is reachable, and the final ZIP passes `unzip -t`. The external manifest records the archive checksum without creating a circular checksum inside the ZIP. Every listed Project 1 deliverable, including the online demonstration, is complete.
+The release is ready only when all automated tests pass, the notebook executes, publication outputs regenerate without drift, the PDF renders cleanly, desktop and mobile dashboard views are checked, the public dashboard is reachable, and the final ZIP passes `unzip -t`. The external manifest records the archive checksum without creating a circular checksum inside the ZIP. The online demonstration remains pending public-access verification in Task 7 and is therefore still a release checklist item.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+from dataclasses import dataclass
 from html import escape
 from pathlib import Path
 import re
@@ -15,6 +16,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
+    CondPageBreak,
     HRFlowable,
     Image,
     KeepTogether,
@@ -68,7 +70,14 @@ def resolve_csv_markers(text: str) -> str:
     return _MARKER.sub(replace, text)
 
 
-def load_headline_results() -> list[tuple[str, str]]:
+@dataclass(frozen=True, slots=True)
+class HeadlineResult:
+    label: str
+    value: str
+    source: str
+
+
+def load_headline_results() -> list[HeadlineResult]:
     """Load report headline values from generated machine-readable outputs."""
 
     edges = _rows(ROOT / "outputs" / "tables" / "house_edges.csv")
@@ -80,23 +89,35 @@ def load_headline_results() -> list[tuple[str, str]]:
     risk_by_strategy = {row["strategy"]: row for row in risk}
 
     return [
-        ("European edge", f"{edge_by_rule['european']:.2%}"),
-        ("American edge", f"{edge_by_rule['american']:.2%}"),
-        (
+        HeadlineResult(
+            "European edge",
+            f"{edge_by_rule['european']:.2%}",
+            "house_edges.csv | rule=european | house_edge",
+        ),
+        HeadlineResult(
+            "American edge",
+            f"{edge_by_rule['american']:.2%}",
+            "house_edges.csv | rule=american | house_edge",
+        ),
+        HeadlineResult(
             "Fair sample corrected p",
             f"{float(test_by_dataset['unbiased']['familywise_p_value']):.4f}",
+            "bias_tests.csv | dataset=unbiased | familywise_p_value",
         ),
-        (
+        HeadlineResult(
             "Biased sample global p",
             f"{float(test_by_dataset['biased']['monte_carlo_global_p_value']):.4f}",
+            "bias_tests.csv | dataset=biased | monte_carlo_global_p_value",
         ),
-        (
+        HeadlineResult(
             "Martingale loss chance",
             f"{float(risk_by_strategy['martingale']['probability_of_loss']):.2%}",
+            "strategy_risk.csv | strategy=martingale | probability_of_loss",
         ),
-        (
+        HeadlineResult(
             "Quarter Kelly loss chance",
             f"{float(risk_by_strategy['quarter_kelly']['probability_of_loss']):.2%}",
+            "strategy_risk.csv | strategy=quarter_kelly | probability_of_loss",
         ),
     ]
 
@@ -207,6 +228,15 @@ def _styles() -> dict[str, ParagraphStyle]:
             textColor=GREEN,
             alignment=TA_CENTER,
         ),
+        "metric_source": ParagraphStyle(
+            "MetricSource",
+            parent=sample["BodyText"],
+            fontName="Courier",
+            fontSize=6.3,
+            leading=7.8,
+            textColor=MUTED,
+            alignment=TA_LEFT,
+        ),
     }
 
 
@@ -214,12 +244,13 @@ def _metrics_table(styles: dict[str, ParagraphStyle]) -> Table:
     results = load_headline_results()
     cells = [
         [
-            Paragraph(_inline(label), styles["metric_label"]),
-            Paragraph(_inline(value), styles["metric_value"]),
+            Paragraph(_inline(result.label), styles["metric_label"]),
+            Paragraph(_inline(result.value), styles["metric_value"]),
+            Paragraph(_inline(result.source), styles["metric_source"]),
         ]
-        for label, value in results
+        for result in results
     ]
-    table = Table(cells, colWidths=[57 * mm, 27 * mm], hAlign="LEFT")
+    table = Table(cells, colWidths=[47 * mm, 25 * mm, 92 * mm], hAlign="LEFT")
     table.setStyle(
         TableStyle(
             [
@@ -285,7 +316,8 @@ def markdown_story(text: str, styles: dict[str, ParagraphStyle]):
 
     def flush_paragraph() -> None:
         if paragraph_lines:
-            story.append(Paragraph(_inline(" ".join(paragraph_lines)), styles["body"]))
+            paragraph = Paragraph(_inline(" ".join(paragraph_lines)), styles["body"])
+            story.append(KeepTogether([paragraph]))
             paragraph_lines.clear()
 
     def flush_list() -> None:
@@ -354,14 +386,13 @@ def markdown_story(text: str, styles: dict[str, ParagraphStyle]):
                 story.append(Spacer(1, 4 * mm))
                 story.append(
                     Paragraph(
-                        "Table 1. Verified headline results loaded from named generated CSV tables",
+                        "Table 1. Headline values with exact generated CSV, row filter, and column source",
                         styles["caption"],
                     )
                 )
                 story.append(HRFlowable(width="100%", thickness=0.7, color=GOLD))
                 inserted_metrics = True
-            if heading == "Conclusion":
-                story.append(PageBreak())
+            story.append(CondPageBreak(72 * mm))
             story.append(Paragraph(_inline(heading), styles["h2"]))
             continue
         if stripped.startswith("**") and line.endswith("  "):

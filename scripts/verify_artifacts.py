@@ -13,6 +13,7 @@ import nbformat
 import numpy as np
 import pandas as pd
 from PIL import Image
+from pypdf import PdfReader
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -352,6 +353,7 @@ def _verify_public_text(root: Path, tables: dict[str, pd.DataFrame]) -> None:
     _read(root / "docs" / "ai_workflow.md", "AI workflow")
     _read(root / "docs" / "methodology_map.md", "methodology map")
     checklist = _read(root / "docs" / "deliverables_checklist.md", "deliverables checklist")
+    visual_qa = _read(root / "docs" / "visual_qa.md", "visual QA record")
 
     report_words = _count_report_prose(report)
     _require(4_500 <= report_words <= 5_000, f"Technical report word count is {report_words}")
@@ -388,6 +390,27 @@ def _verify_public_text(root: Path, tables: dict[str, pd.DataFrame]) -> None:
     for phrase in manual_baseline_phrases:
         _require(phrase in readme, f"README baseline phrase mismatch: {phrase}")
         _require(phrase in checklist, f"Deliverables checklist baseline phrase mismatch: {phrase}")
+
+    deployment_documents = (readme, application, checklist, visual_qa)
+    deployment_url = "https://roulette-analytics-lab.streamlit.app/"
+    for text in deployment_documents:
+        _require(deployment_url in text, "Deployment target URL is missing")
+        _require(
+            "pending public-access verification" in text.lower(),
+            "Unverified deployment status is not labelled pending",
+        )
+    forbidden_public_claims = (
+        "open the live streamlit dashboard",
+        "the public dashboard is available",
+        "live interactive dashboard",
+        "public streamlit url",
+        "sharing settings identify the app as public and searchable",
+    )
+    combined = "\n".join(deployment_documents).lower()
+    _require(
+        not any(claim in combined for claim in forbidden_public_claims),
+        "Unverified public deployment status is overstated",
+    )
 
 
 def _verify_notebook(root: Path) -> None:
@@ -432,6 +455,12 @@ def _verify_figures_and_pdf(root: Path) -> None:
         _require(any(low < high for low, high in extrema), f"Figure is blank: {path.name}")
     pdf = root / "report" / "technical_report.pdf"
     _require(pdf.is_file() and pdf.stat().st_size > 50_000, "Missing or undersized report PDF")
+    reader = PdfReader(pdf)
+    _require(13 <= len(reader.pages) <= 16, f"Report PDF has {len(reader.pages)} pages")
+    _require(
+        "Probability Contract" in reader.pages[3].extract_text(),
+        "Probability Contract is missing from PDF page 4",
+    )
 
 
 def verify_artifacts(root: Path) -> None:

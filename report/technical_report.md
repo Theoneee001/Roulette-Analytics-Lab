@@ -42,7 +42,7 @@ Probability also shapes path behaviour. Let a bankroll increment be the stake ti
 
 Kelly sits at the boundary between the probability contract and a decision contract. With correct repeated-trial probability p, net odds b, divisible capital, and logarithmic utility, full Kelly is `max(0, (b*p - (1-p))/b)`. It is optimal only in the restricted sense of maximizing assumed expected log growth under those conditions. It does not maximize every reasonable objective. It does not guarantee a profit. It does not license an estimate that has been selected after a search. Crucially, the fair European straight-up probability is below break-even, and `kelly_sensitivity.csv` reports zero full, half, and quarter Kelly at that fair input. Zero is the mathematically appropriate answer when the assumed edge is absent.
 
-![Figure 1. Exact house-edge comparisons from the generated probability contract.](../outputs/figures/02_house_edge_comparison.png)
+![Figure 3. Exact house-edge comparisons across the generated wheel and special-rule contracts.](../outputs/figures/02_house_edge_comparison.png)
 
 ## Fixed-Horizon Inference
 
@@ -58,7 +58,7 @@ Effect size belongs beside significance. A very large sample can make tiny model
 
 ![Figure 4. Power under named synthetic pocket probabilities and a fixed test design.](../outputs/figures/05_detection_power.png)
 
-![Figure 2. Residuals identify contributions to the global test without validating a post-selected pocket claim.](../outputs/figures/04_bias_residuals.png)
+![Figure 5. Pocket residuals for the fair and synthetic biased samples.](../outputs/figures/04_bias_residuals.png)
 
 ## Sequential Evidence
 
@@ -66,7 +66,7 @@ Sequential observation asks a different question: what evidence accumulates when
 
 The lab implements a simple likelihood-ratio process for an indicator of a pre-specified target pocket. Under the simple null, its probability is p0. Under the simple alternative, it is p1, with p1 greater than p0. Each hit multiplies the likelihood ratio by p1/p0; each miss multiplies it by `(1-p1)/(1-p0)`. The log ratio accumulates these increments. Under the stated simple null, the likelihood ratio is a non-negative martingale. A threshold of 1/alpha gives a time-uniform rejection rule through Ville's inequality for this particular contract.
 
-`sequential_evidence.csv` records one row per spin, including target hits, cumulative hits, log likelihood ratio, e-value, threshold, ordinary fixed-horizon p-value, the declared null and alternative probabilities, alpha, seed, and scenario. The threshold is not a decorative line on the chart. It identifies the pre-specified stopping rule. The fair-null demonstration shows how an e-value path can rise and fall without crossing its boundary. The changed scenario shows the same evidence process under an injected alternative. The notebook reads this table directly and labels its contract rather than reimplementing the calculation inside a cell.
+`sequential_evidence.csv` contains only the generated fair-null example. It records one row per spin, including target hits, cumulative hits, log likelihood ratio, e-value, threshold, ordinary fixed-horizon p-value, the declared null and alternative probabilities, alpha, and seed. The threshold identifies the pre-specified stopping rule. This one path shows how an e-value can rise and fall without crossing its boundary; it does not establish changed-stream reliability. The synthetic changed example and its CUSUM operating results are in `change_point_results.csv`, where they answer a separate change-point question. The notebook reads both tables directly and does not recreate either calculation inside a cell.
 
 This method does not solve arbitrary monitoring. The target pocket must be selected before monitoring. The alternative must be declared, or another valid composite method must be supplied. A reader cannot inspect 37 paths, choose the one that looks strongest, and claim the same simple-null guarantee without multiplicity or a fresh stream. Nor does a likelihood ratio prove that a physical wheel has a particular defect. It compares two defined probability models.
 
@@ -74,7 +74,7 @@ The ordinary p-value remains in the table as a contrast. At a fixed, planned hor
 
 In product terms, the distinction needs to be visible before a user clicks Run. The dashboard asks for the target, null probability, alternative probability, and alpha. It plots fixed-horizon and sequential quantities together but explains why they are not interchangeable. That is a better interface decision than hiding the monitoring rule in code. A numerical product can invite overconfidence when it offers a button without describing what the button assumes.
 
-![Figure 3. Generated likelihood-ratio paths and their declared sequential threshold.](../outputs/figures/07_sequential_evidence.png)
+![Figure 6. The generated fair-null likelihood-ratio path and its declared evidence threshold.](../outputs/figures/07_sequential_evidence.png)
 
 ## Change-Point Diagnostics
 
@@ -88,7 +88,7 @@ Threshold choice also has consequences. Lower thresholds trigger sooner and more
 
 The CUSUM is not a substitute for the fixed-horizon fairness test. A global chi-square test checks a complete count vector against uniformity at one planned endpoint. A CUSUM watches for a specified temporal change in one indicator. A sequential likelihood-ratio process controls repeated monitoring under its declared simple models. Post-selection correction accounts for a target chosen after examining data. Those questions overlap in practice, but they do not collapse into one p-value. The report keeps their labels separate so the reader can see when the workflow changes.
 
-![Figure 4. CUSUM trajectories for the stationary and synthetic changed streams.](../outputs/figures/08_change_point_cusum.png)
+![Figure 7. CUSUM scores for the fair-null and synthetic changed example streams, with threshold and recorded change.](../outputs/figures/08_change_point_cusum.png)
 
 ## Posterior Decisions
 
@@ -98,13 +98,13 @@ Fixed-horizon testing describes compatibility with a null. A betting calculation
 
 The report does not use a posterior as an automatic permission slip. A credible interval describes posterior uncertainty under a chosen model and prior. It does not repair a target selected after a search, confirm independence, or guarantee stability in future play. When the target was selected from the same data, the posterior may also inherit the selection issue. A clean solution is to pre-specify the target or use one data split to nominate a target and another to evaluate it. The project retains this distinction in the methodology map and dashboard copy.
 
-Full plug-in Kelly inserts the posterior mean into the conditional expected-log-growth formula. Half and quarter Kelly multiply that output. The posterior lower-quantile Kelly entry does something slightly different: it feeds a lower posterior probability quantile into the same formula. `posterior_edge.csv` labels this result `heuristic_lower_posterior_quantile`. That word is necessary. The quantile version is a conservative heuristic for exposure to probability uncertainty, not a theorem of robust optimization, a universal optimum, or a guarantee of a positive outcome.
+Full plug-in Kelly inserts the posterior mean into the conditional expected-log-growth formula. Half and quarter Kelly multiply that output. The posterior lower-quantile Kelly entry does something slightly different: it feeds a lower posterior probability quantile into the same formula. `posterior_edge.csv` labels this result `heuristic_lower_posterior_quantile`. That word is necessary. The quantile version is a conservative heuristic for exposure to probability uncertainty, not a formal uncertainty-aware optimum, a universal optimum, or a guarantee of a positive outcome.
 
 The heuristic may produce a lower stake or zero stake even when the posterior mean clears break-even. That behaviour is a feature, not a defect. It exposes sensitivity to uncertainty instead of burying it in a single point estimate. Still, it should not be mistaken for a complete decision theory. A different prior, utility, horizon, liquidity constraint, or concern about model misspecification could lead to a different conservative choice. The dashboard displays the probability inputs and labels the result as scenario analysis.
 
 The fair-wheel case remains the anchor. There is no assumed positive edge when a fair European straight bet is paid at standard odds. The basic Kelly function clips negative fractions at zero. A dashboard user can enter a custom probability or payout to study the mathematics, but that control does not turn the real contract into a favourable one. The distinction between calculating a hypothetical and asserting a fact about a casino is the responsible-gambling boundary in this project.
 
-![Figure 5. Posterior uncertainty and the distinction between plug-in and lower-quantile Kelly.](../outputs/figures/09_posterior_edge.png)
+![Figure 8. Beta posterior density with its credible interval, break-even probability, and posterior mean.](../outputs/figures/09_posterior_edge.png)
 
 ## Risk Frontier
 
@@ -114,13 +114,13 @@ Expected log growth is valuable because it penalizes ruin-like paths and describ
 
 The CVaR convention is explicit. For each simulated terminal equity value, the code first forms a non-negative shortfall: `max(initial bankroll - terminal equity, 0)`. Larger values are worse. At the stated tail probability, CVaR is the mean of the largest shortfalls, including at least one observation for a finite sample. `risk_frontier.csv` reports that quantity as `terminal_cvar_shortfall` and states its tail probability. This avoids a common sign confusion. It is not CVaR of investment return written with an unstated negative sign; it is the average severity of the worst terminal shortfalls under this loss convention.
 
-The frontier is not a contest to identify one permanent winner. Full Kelly can be expected-log-growth optimal under correct probabilities and repeated independent trials, while a lower fraction can have a lower chance of ending below the starting bankroll or a smaller tail shortfall in a finite constrained experiment. In the generated output, the trade-off is visible across all three fractions. The purpose is to show that objectives conflict. A person with a short horizon, a hard drawdown constraint, or weak belief in the probability model may reject a fraction that looks attractive under another objective.
+The frontier is not a contest to identify one permanent winner. Full Kelly can be expected-log-growth optimal under correct probabilities and repeated independent trials, while a lower fraction can have a lower chance of loss or a smaller tail shortfall. Objectives conflict. A person with a short horizon or weak belief in the probability model may therefore choose a lower fraction.
 
-The project also retains `strategy_risk.csv` for flat, Martingale, reverse Martingale, and Kelly comparisons. Martingale changes stake sequence after losses but cannot change the expected return of the underlying fair casino contract. Under the synthetic favourable input it may have a large terminal mean in some paths while concentrating risk in others. The table reports terminal percentiles, loss probability, drawdown, and simulated ruin. A single headline mean would hide most of this story.
+The project also retains `strategy_risk.csv` for flat, Martingale, reverse Martingale, and Kelly comparisons. Table 1 reads its quarter-Kelly loss rate, `{{strategy_risk.csv|strategy=quarter_kelly|probability_of_loss|.2%}}`, from the strategy comparison, while `risk_frontier.csv` reports `{{risk_frontier.csv|kelly_fraction_multiplier=0.25|probability_of_loss|.2%}}`. Both use the same 3,000 paths and 300-spin horizon, as well as the same bankroll constraints and assumed pocket probability. They are separate Monte Carlo samples: the strategy table uses seed `{{strategy_risk.csv|strategy=quarter_kelly|seed|.0f}}`, while the frontier uses seed `{{risk_frontier.csv|kelly_fraction_multiplier=0.25|seed|.0f}}` as a common random-number stream for all three Kelly fractions. The small difference is simulation variation, not a strategy effect or a change in path count. The values should not be treated as directly paired observations.
 
 Constraints are part of the model. Bankroll simulation enforces minimum chips, table limits, stop-losses, take-profits, and the available bankroll. Requested stakes are rounded down to legal chip increments. En Prison bets have a defined interim equity treatment because they can remain unresolved at a horizon. These choices make the simulation less like a generic chart generator and more like a stated experiment. They also make its limitations clearer: changing a stop rule changes the distribution of reported terminal values, not the house edge of a fair wager.
 
-![Figure 6. The generated risk frontier compares log growth, drawdown, and terminal shortfall.](../outputs/figures/10_risk_frontier.png)
+![Figure 9. Expected log growth by Kelly fraction multiplier under common random outcomes.](../outputs/figures/10_risk_frontier.png)
 
 ## Software and Product Design
 

@@ -1,6 +1,6 @@
 # Application Materials
 
-**Portfolio evidence:** [GitHub repository](https://github.com/Theoneee001/Roulette-Analytics-Lab) | [Live interactive dashboard](https://roulette-analytics-lab.streamlit.app/)
+**Portfolio evidence:** [GitHub repository](https://github.com/Theoneee001/Roulette-Analytics-Lab) | [Streamlit deployment target](https://roulette-analytics-lab.streamlit.app/), pending public-access verification in Task 7
 
 ## CV Bullets
 

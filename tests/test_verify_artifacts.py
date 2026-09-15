@@ -89,6 +89,21 @@ def test_verifier_enforces_manual_baseline_phrases(tmp_path):
         verify_artifacts(copied)
 
 
+def test_verifier_rejects_unverified_public_dashboard_wording(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    readme = copied / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8").replace(
+            "Streamlit deployment target, pending public-access verification in Task 7",
+            "Open the live Streamlit dashboard",
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(VerificationError, match="deployment status"):
+        verify_artifacts(copied)
+
+
 def test_verifier_allows_negative_infinite_expected_log_growth(tmp_path):
     copied = copy_artifacts(tmp_path)
     path = copied / "outputs/tables/risk_frontier.csv"

@@ -2,6 +2,16 @@ from pathlib import Path
 import re
 
 from PIL import Image
+import pandas as pd
+from pypdf import PdfReader
+from reportlab.platypus import KeepTogether, PageBreak, Paragraph
+
+from scripts.build_report_pdf import (
+    _styles,
+    load_headline_results,
+    markdown_story,
+    resolve_csv_markers,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -74,6 +84,66 @@ def test_report_headline_evidence_names_generated_csv_tables():
         assert table in report
 
 
+def test_report_describes_the_generated_sequential_scenarios_accurately():
+    sequential = pd.read_csv(ROOT / "outputs/tables/sequential_evidence.csv")
+    assert sequential["scenario"].unique().tolist() == ["fair_null"]
+
+    section = extract_named_section(ROOT / "report/technical_report.md", "Sequential Evidence")
+    assert "contains only the generated fair-null example" in section
+    assert "changed scenario shows the same evidence process" not in section.lower()
+
+    change_section = extract_named_section(
+        ROOT / "report/technical_report.md", "Change-Point Diagnostics"
+    )
+    assert "`change_point_results.csv` contains two generated scenarios" in change_section
+
+
+def test_table_one_names_the_exact_source_for_every_metric():
+    assert [result.source for result in load_headline_results()] == [
+        "house_edges.csv | rule=european | house_edge",
+        "house_edges.csv | rule=american | house_edge",
+        "bias_tests.csv | dataset=unbiased | familywise_p_value",
+        "bias_tests.csv | dataset=biased | monte_carlo_global_p_value",
+        "strategy_risk.csv | strategy=martingale | probability_of_loss",
+        "strategy_risk.csv | strategy=quarter_kelly | probability_of_loss",
+    ]
+
+
+def test_report_explains_the_two_quarter_kelly_samples_without_overclaiming():
+    section = extract_named_section(ROOT / "report/technical_report.md", "Risk Frontier")
+    for table in ("strategy_risk.csv", "risk_frontier.csv"):
+        assert table in section
+    for marker in (
+        "{{strategy_risk.csv|strategy=quarter_kelly|probability_of_loss|.2%}}",
+        "{{risk_frontier.csv|kelly_fraction_multiplier=0.25|probability_of_loss|.2%}}",
+        "{{strategy_risk.csv|strategy=quarter_kelly|seed|.0f}}",
+        "{{risk_frontier.csv|kelly_fraction_multiplier=0.25|seed|.0f}}",
+    ):
+        assert marker in section
+    assert "Both use the same 3,000 paths and 300-spin horizon" in section
+    assert "separate Monte Carlo samples" in section
+
+
+def test_report_figure_numbers_are_unique_monotone_and_captions_match_plots():
+    report = (ROOT / "report/technical_report.md").read_text(encoding="utf-8")
+    figures = re.findall(r"^!\[Figure (\d+)\. ([^]]+)]\(([^)]+)\)$", report, re.MULTILINE)
+    assert [int(number) for number, _, _ in figures] == list(range(1, len(figures) + 1))
+    assert [path for _, _, path in figures] == [
+        "../outputs/figures/01_wheel_layout.png",
+        "../outputs/figures/03_lln_convergence.png",
+        "../outputs/figures/02_house_edge_comparison.png",
+        "../outputs/figures/05_detection_power.png",
+        "../outputs/figures/04_bias_residuals.png",
+        "../outputs/figures/07_sequential_evidence.png",
+        "../outputs/figures/08_change_point_cusum.png",
+        "../outputs/figures/09_posterior_edge.png",
+        "../outputs/figures/10_risk_frontier.png",
+    ]
+    assert figures[-1][1] == (
+        "Expected log growth by Kelly fraction multiplier under common random outcomes."
+    )
+
+
 def test_personal_statement_material_is_in_range():
     section = extract_named_section(
         ROOT / "docs/application_materials.md", "Personal Statement Material"
@@ -104,19 +174,39 @@ def test_readme_contains_manual_requirements():
         assert f"## {heading}" in readme
 
 
-def test_public_dashboard_is_linked_across_release_documents():
+def test_deployment_target_is_linked_but_not_claimed_public_before_task_seven():
     live_url = "https://roulette-analytics-lab.streamlit.app/"
     for relative in [
         "README.md",
+        "docs/application_materials.md",
         "docs/deliverables_checklist.md",
         "docs/visual_qa.md",
     ]:
         text = (ROOT / relative).read_text(encoding="utf-8")
-        assert live_url in text, f"Missing public dashboard URL in {relative}"
+        assert live_url in text, f"Missing deployment target URL in {relative}"
+        assert "pending public-access verification" in text.lower(), relative
+
+    combined = "\n".join(
+        (ROOT / relative).read_text(encoding="utf-8")
+        for relative in [
+            "README.md",
+            "docs/application_materials.md",
+            "docs/deliverables_checklist.md",
+            "docs/visual_qa.md",
+        ]
+    )
+    for false_claim in [
+        "Open the live Streamlit dashboard",
+        "The public dashboard is available",
+        "Live interactive dashboard",
+        "Public Streamlit URL",
+        "sharing settings identify the app as public and searchable",
+    ]:
+        assert false_claim.lower() not in combined.lower()
 
     checklist = (ROOT / "docs/deliverables_checklist.md").read_text(encoding="utf-8")
     assert "| Online demonstration |" in checklist
-    assert "Post-acceptance only" not in checklist
+    assert "Task 7 release checklist item" in checklist
 
 
 def test_provenance_credits_every_author_and_records_source_checksum():
@@ -162,6 +252,67 @@ def test_pdf_and_manual_facing_docs_exist():
         assert path.exists() and path.stat().st_size > 500
 
 
+def _pdf_body_lines(page, page_number: int) -> list[str]:
+    ignored = {
+        "Roulette Analytics Lab | Jialiang Gong",
+        f"Page {page_number}",
+        "Roulette Analytics Lab V2 | Research report",
+    }
+    return [
+        line.strip()
+        for line in page.extract_text().splitlines()
+        if line.strip() and line.strip() not in ignored
+    ]
+
+
+def _source_block_starts() -> tuple[str, ...]:
+    starts = ["European edge"]
+    for line in (ROOT / "report/technical_report.md").read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("## "):
+            starts.append(stripped[3:])
+        elif stripped.startswith("![Figure "):
+            starts.append(stripped[2:].split("]", 1)[0])
+        elif stripped and not stripped.startswith(("#", "```", "|")):
+            plain = re.sub(r"[`*_]", "", stripped)
+            starts.append(plain[:45])
+    return tuple(starts)
+
+
+def test_pdf_is_a4_in_range_and_starts_pages_with_complete_source_blocks():
+    reader = PdfReader(ROOT / "report/technical_report.pdf")
+    assert 13 <= len(reader.pages) <= 16
+    assert "Probability Contract" in reader.pages[3].extract_text()
+
+    starts = _source_block_starts()
+    for page_number, page in enumerate(reader.pages[1:], start=2):
+        body = _pdf_body_lines(page, page_number)
+        assert body, f"Page {page_number} is blank"
+        first = body[0]
+        assert any(start.startswith(first[: min(25, len(first))]) for start in starts), (
+            page_number,
+            first,
+        )
+
+
+def test_pdf_story_keeps_headings_with_content_and_only_breaks_after_cover():
+    styles = _styles()
+    assert styles["h2"].keepWithNext
+    source = resolve_csv_markers(
+        (ROOT / "report/technical_report.md").read_text(encoding="utf-8")
+    )
+    story = markdown_story(source, styles)
+    assert sum(isinstance(flowable, PageBreak) for flowable in story) == 1
+    probability = next(
+        index
+        for index, flowable in enumerate(story)
+        if isinstance(flowable, Paragraph) and flowable.getPlainText() == "Probability Contract"
+    )
+    first_content = story[probability + 1]
+    assert isinstance(first_content, KeepTogether)
+    assert first_content._content[0].getPlainText().startswith("The first contract is exact.")
+
+
 def test_targeted_publication_files_contain_no_em_dash():
     for relative in [
         "README.md",
@@ -189,7 +340,7 @@ def test_release_visual_evidence_has_expected_dimensions_and_scope():
         "Bankroll Simulator",
         "Methods & Limits",
         "390x844",
-        "11 pages",
+        "14 pages",
         "WebSocket",
     ]:
         assert phrase in record

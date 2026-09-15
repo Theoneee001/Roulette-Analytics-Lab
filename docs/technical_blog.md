@@ -32,11 +32,11 @@ Kelly is often described too casually. In the usual model, it chooses the stake 
 
 Under standard fair European straight-up roulette, the assumed probability is below break-even. The correct Kelly fraction is therefore zero. `kelly_sensitivity.csv` makes this visible. Positive Kelly appears only after a favourable probability has been supplied to the model.
 
-The synthetic posterior example in `posterior_edge.csv` goes further. It shows a posterior mean, credible interval, probability above break-even, plug-in Kelly, and lower-quantile Kelly. That probability uncertainty belongs in the decision, not in a footnote. The lower-quantile figure is explicitly a heuristic. It deliberately shrinks exposure by using a cautious probability input, but it is not a theorem of robust optimisation and it cannot correct a target that was selected after inspecting the same sample.
+The synthetic posterior example in `posterior_edge.csv` goes further. It shows a posterior mean, credible interval, probability above break-even, plug-in Kelly, and lower-quantile Kelly. That probability uncertainty belongs in the decision, not in a footnote. The lower-quantile figure is explicitly a heuristic. It deliberately shrinks exposure by using a cautious probability input, but it is not a formal uncertainty-aware optimum and it cannot correct a target that was selected after inspecting the same sample.
 
 ## Risk belongs in the comparison
 
-The risk frontier compares quarter, half, and full Kelly under one named synthetic scenario. Common random numbers ensure each fraction experiences the same seeded simulated outcomes. `risk_frontier.csv` reports expected log growth alongside loss probability, expected drawdown, and terminal CVaR.
+The risk frontier compares quarter, half, and full Kelly under one named synthetic scenario. Common random numbers give each fraction the same seeded simulated outcomes. `risk_frontier.csv` reports expected log growth alongside loss probability, expected drawdown, and terminal CVaR.
 
 The CVaR sign convention is plain: terminal shortfall is `max(initial bankroll - terminal equity, 0)`, so larger values are worse. CVaR is the mean of the worst shortfalls at the stated tail probability. It is not an unstated return convention with a reversed sign. This matters when a chart is used to compare strategies, because otherwise a lower-tail metric can sound clearer than it is.
 
