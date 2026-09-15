@@ -66,12 +66,18 @@ def test_posterior_edge_summary_rejects_nonfinite_beta_shape_sum():
         )
 
 
-def test_posterior_edge_summary_rejects_future_trials_above_scipy_integer_range():
-    too_many_future_trials = int(np.iinfo(np.intp).max) + 1
+def test_posterior_edge_summary_accepts_practical_future_trials_maximum():
+    result = posterior_edge_summary(
+        6, 100, 1.0, 36.0, 35.0, 0.95, 0.10, 1_000_000
+    )
 
-    with pytest.raises(ValueError, match="future_trials must be at most"):
+    assert result.predictive_interval == (20_939, 93_554)
+
+
+def test_posterior_edge_summary_rejects_future_trials_above_practical_maximum():
+    with pytest.raises(ValueError, match=r"^future_trials must be at most 1000000\.$"):
         posterior_edge_summary(
-            0, 0, 1.0, 36.0, 35.0, 0.95, 0.10, too_many_future_trials
+            0, 0, 1.0, 36.0, 35.0, 0.95, 0.10, 1_000_001
         )
 
 

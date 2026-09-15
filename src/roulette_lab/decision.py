@@ -13,7 +13,9 @@ import scipy.stats
 from .bets import kelly_fraction
 
 
-_MAX_SCIPY_FUTURE_TRIALS = int(np.iinfo(np.intp).max)
+# SciPy 1.18.1 computes the beta-binomial interval at this project-scale cap
+# quickly and stably; larger horizons are outside the lab's practical contract.
+_MAX_FUTURE_TRIALS = 1_000_000
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +53,8 @@ def posterior_edge_summary(
 
     The plug-in allocation uses the posterior mean. The lower-quantile
     allocation is deliberately labelled a heuristic rather than a guarantee.
+    ``future_trials`` is capped at one million to keep SciPy's beta-binomial
+    predictive interval within this project's verified operating range.
     """
 
     hits, trials = _validated_counts(hits, trials)
@@ -108,11 +112,8 @@ def _nonnegative_integer(value: object, name: str) -> int:
 
 def _scipy_trial_count(value: object, name: str) -> int:
     count = _nonnegative_integer(value, name)
-    if count > _MAX_SCIPY_FUTURE_TRIALS:
-        raise ValueError(
-            f"{name} must be at most {_MAX_SCIPY_FUTURE_TRIALS} "
-            "for SciPy's integer range."
-        )
+    if count > _MAX_FUTURE_TRIALS:
+        raise ValueError(f"{name} must be at most {_MAX_FUTURE_TRIALS}.")
     return count
 
 
