@@ -18,7 +18,7 @@ This checklist maps the execution manual's Project 1 expectations to repository 
 | GitHub-ready repository | README, licence, lock file, commands, CI | [`README.md`](../README.md), [`LICENSE`](../LICENSE), [`requirements-lock.txt`](../requirements-lock.txt), [`reproducibility.yml`](../.github/workflows/reproducibility.yml) | Complete |
 | Code reproducibility | Fixed seeds and permanent cross-artifact checks | [`run_analysis.py`](../scripts/run_analysis.py), [`verify_artifacts.py`](../scripts/verify_artifacts.py) | Complete |
 | Data | Fair and biased teaching datasets with strict schema | [`example_unbiased_spins.csv`](../data/example_unbiased_spins.csv), [`example_biased_spins.csv`](../data/example_biased_spins.csv), [`README`](../data/README.md) | Complete |
-| Machine-readable results | Seven output tables and six figures | [`outputs/tables`](../outputs/tables), [`outputs/figures`](../outputs/figures) | Complete |
+| Machine-readable results | Existing seven tables and six figures remain. The final release contains eleven tables and ten figures. | [`outputs/tables`](../outputs/tables), [`outputs/figures`](../outputs/figures) | Complete |
 | Correct interpretation | Negative expectation, post-selection bias, and probability uncertainty | [`technical_report.md`](../report/technical_report.md), [`technical_blog.md`](technical_blog.md) | Complete |
 | AI capability evidence | Assisted workflow plus verification boundary | [`ai_workflow.md`](ai_workflow.md) | Complete |
 | Application value | CV, PS, interview, contribution, and programme maps | [`application_materials.md`](application_materials.md) | Complete |

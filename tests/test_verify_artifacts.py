@@ -4,6 +4,7 @@ import sys
 
 import pandas as pd
 import pytest
+from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -63,6 +64,58 @@ def test_verifier_rejects_missing_manual_evidence(tmp_path):
     copied = copy_artifacts(tmp_path)
     (copied / "docs/technical_blog.md").unlink()
     with pytest.raises(VerificationError, match="technical blog"):
+        verify_artifacts(copied)
+
+
+def test_verifier_requires_the_v2_change_point_table(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    (copied / "outputs/tables/change_point_results.csv").unlink()
+
+    with pytest.raises(VerificationError, match="change_point_results"):
+        verify_artifacts(copied)
+
+
+def test_verifier_enforces_manual_baseline_phrases(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    readme = copied / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8").replace(
+            "Existing seven tables and six figures remain.", "Baseline totals removed."
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(VerificationError, match="baseline phrase"):
+        verify_artifacts(copied)
+
+
+def test_verifier_allows_negative_infinite_expected_log_growth(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    path = copied / "outputs/tables/risk_frontier.csv"
+    table = pd.read_csv(path)
+    table.loc[0, "expected_log_growth"] = float("-inf")
+    table.to_csv(path, index=False, lineterminator="\n")
+
+    verify_artifacts(copied)
+
+
+def test_verifier_rejects_positive_infinite_expected_log_growth(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    path = copied / "outputs/tables/risk_frontier.csv"
+    table = pd.read_csv(path)
+    table.loc[0, "expected_log_growth"] = float("inf")
+    table.to_csv(path, index=False, lineterminator="\n")
+
+    with pytest.raises(VerificationError, match="expected_log_growth"):
+        verify_artifacts(copied)
+
+
+def test_verifier_rejects_blank_v2_figure(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    image_path = copied / "outputs/figures/10_risk_frontier.png"
+    Image.new("RGB", (1_800, 1_080), "white").save(image_path)
+
+    with pytest.raises(VerificationError, match="blank"):
         verify_artifacts(copied)
 
 

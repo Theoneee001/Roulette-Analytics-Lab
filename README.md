@@ -118,7 +118,7 @@ The screenshots below were generated from the tested V1 interface. The full inte
 
 ![Roulette Analytics Lab mobile dashboard](docs/assets/dashboard-mobile.png)
 
-The repository also ships six deterministic publication figures in [outputs/figures](outputs/figures). The public dashboard is available at [roulette-analytics-lab.streamlit.app](https://roulette-analytics-lab.streamlit.app/), and the local launch command above runs the same app from source.
+Existing seven tables and six figures remain. The final release contains eleven tables and ten figures. These include deterministic sequential-evidence, change-point, posterior-edge, and risk-frontier outputs in [outputs](outputs). The public dashboard is available at [roulette-analytics-lab.streamlit.app](https://roulette-analytics-lab.streamlit.app/), and the local launch command above runs the same app from source.
 
 ## Reproducibility
 

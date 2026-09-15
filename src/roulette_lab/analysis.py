@@ -7,6 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.stats
 
 from .bankroll import (
     BankrollConfig,
@@ -15,8 +16,11 @@ from .bankroll import (
     summarize_bankroll,
 )
 from .bets import BetKind, SpecialRule, house_edge, kelly_fraction, make_standard_bet
+from .decision import posterior_edge_summary
 from .figures import publication_figures
 from .io import read_spin_csv
+from .risk import build_risk_frontier
+from .sequential import cusum_change_detection, likelihood_ratio_path
 from .statistics import (
     chi_square_fairness,
     estimate_detection_power,
@@ -24,6 +28,10 @@ from .statistics import (
     monte_carlo_global_pvalue,
 )
 from .wheels import WheelKind, make_fair_wheel, wheel_with_single_pocket_probability
+
+
+_SHOWCASE_SPINS = 1_000
+_BIASED_TEACHING_SAMPLE_SEED = 2026091202
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +55,14 @@ class AnalysisConfig:
     table_limit: float = 100.0
     stop_loss: float = 500.0
     take_profit: float = 2_000.0
+    sequential_alternative_probability: float = 0.06
+    change_spin: int = 500
+    cusum_threshold: float = 4.0
+    posterior_prior_alpha: float = 1.0
+    posterior_prior_beta: float = 36.0
+    posterior_future_trials: int = 100
+    posterior_lower_quantile: float = 0.10
+    risk_multipliers: tuple[float, ...] = (0.25, 0.5, 1.0)
 
     def __post_init__(self) -> None:
         for name in (
@@ -58,6 +74,8 @@ class AnalysisConfig:
             "power_experiments",
             "bankroll_spins",
             "bankroll_paths",
+            "change_spin",
+            "posterior_future_trials",
         ):
             value = getattr(self, name)
             minimum = 0 if name == "seed" else 1
@@ -71,6 +89,11 @@ class AnalysisConfig:
             "table_limit",
             "stop_loss",
             "take_profit",
+            "sequential_alternative_probability",
+            "cusum_threshold",
+            "posterior_prior_alpha",
+            "posterior_prior_beta",
+            "posterior_lower_quantile",
         ):
             value = getattr(self, name)
             if isinstance(value, bool) or not isinstance(value, Real):
@@ -85,6 +108,28 @@ class AnalysisConfig:
             raise ValueError("bias_label must be a non-empty pocket label.")
         if not 0.0 <= self.bias_probability <= 1.0:
             raise ValueError("bias_probability must be between zero and one.")
+        fair_probability = 1.0 / 37.0
+        if not fair_probability < self.sequential_alternative_probability < 1.0:
+            raise ValueError(
+                "sequential_alternative_probability must be strictly between 1/37 and one."
+            )
+        if not 1 <= self.change_spin <= _SHOWCASE_SPINS:
+            raise ValueError(f"change_spin must be between 1 and {_SHOWCASE_SPINS}.")
+        if self.cusum_threshold <= 0.0:
+            raise ValueError("cusum_threshold must be positive.")
+        if self.posterior_prior_alpha <= 0.0 or self.posterior_prior_beta <= 0.0:
+            raise ValueError("Posterior prior parameters must be positive.")
+        if not 0.0 < self.posterior_lower_quantile < 1.0:
+            raise ValueError("posterior_lower_quantile must be strictly between zero and one.")
+        if self.posterior_future_trials < 0:
+            raise ValueError("posterior_future_trials must be non-negative.")
+        try:
+            multipliers = tuple(float(value) for value in self.risk_multipliers)
+        except (TypeError, ValueError) as error:
+            raise ValueError("risk_multipliers must contain 0.25, 0.5, and 1.0.") from error
+        if multipliers != (0.25, 0.5, 1.0):
+            raise ValueError("risk_multipliers must be exactly (0.25, 0.5, 1.0).")
+        object.__setattr__(self, "risk_multipliers", multipliers)
         if self.power_spins < 185:
             raise ValueError("power_spins must provide at least five expected spins per pocket.")
         if self.initial_bankroll <= 0 or self.base_stake <= 0 or self.min_chip <= 0:
@@ -118,6 +163,10 @@ class AnalysisBundle:
     detection_power: pd.DataFrame
     kelly_sensitivity: pd.DataFrame
     strategy_risk: pd.DataFrame
+    sequential_evidence: pd.DataFrame
+    change_point_results: pd.DataFrame
+    posterior_edge: pd.DataFrame
+    risk_frontier: pd.DataFrame
 
     @classmethod
     def table_names(cls) -> tuple[str, ...]:
@@ -168,6 +217,10 @@ def run_full_analysis(config: AnalysisConfig) -> AnalysisBundle:
         detection_power=_power_table(config, european),
         kelly_sensitivity=_kelly_table(config),
         strategy_risk=_strategy_table(config, biased),
+        sequential_evidence=_sequential_evidence_table(config, european),
+        change_point_results=_change_point_table(config, european),
+        posterior_edge=_posterior_edge_table(config, european),
+        risk_frontier=_risk_frontier_table(config, biased),
     )
 
 
@@ -377,9 +430,243 @@ def _strategy_table(config: AnalysisConfig, wheel) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _sequential_evidence_table(config: AnalysisConfig, wheel) -> pd.DataFrame:
+    """Build a fixed fair null path for the simple-null LR illustration."""
+
+    p0 = float(wheel.probabilities[wheel.labels.index(config.bias_label)])
+    seed = config.seed + 300
+    observations = np.random.default_rng(seed).binomial(1, p0, size=_SHOWCASE_SPINS)
+    evidence = likelihood_ratio_path(
+        observations,
+        p0=p0,
+        p1=config.sequential_alternative_probability,
+        alpha=config.alpha,
+    )
+    spins = np.arange(1, _SHOWCASE_SPINS + 1)
+    hits = np.cumsum(observations)
+    first_crossing = evidence.first_crossing or 0
+    return pd.DataFrame(
+        {
+            "scenario": "fair_null",
+            "spin": spins,
+            "target_hit": observations,
+            "cumulative_hits": hits,
+            "log_likelihood_ratio": evidence.log_likelihood_ratio,
+            "e_value": evidence.e_values,
+            "e_value_threshold": evidence.threshold,
+            "first_crossing": first_crossing,
+            "fixed_horizon_p_value": scipy.stats.binom.sf(hits - 1, spins, p0),
+            "null_probability": p0,
+            "alternative_probability": evidence.p1,
+            "alpha": evidence.alpha,
+            "seed": seed,
+            "spins": _SHOWCASE_SPINS,
+            "evidence_contract": "simple_null_vs_simple_alternative",
+        }
+    )
+
+
+def _change_point_table(config: AnalysisConfig, wheel) -> pd.DataFrame:
+    """Return per-spin fair and changed CUSUM paths with repeated reliability data."""
+
+    p0 = float(wheel.probabilities[wheel.labels.index(config.bias_label)])
+    scenarios = (
+        ("fair_null", config.seed + 320, np.full(_SHOWCASE_SPINS, p0), 0),
+        (
+            f"changed_at_{config.change_spin}",
+            config.seed + 321,
+            np.concatenate(
+                (
+                    np.full(config.change_spin - 1, p0),
+                    np.full(_SHOWCASE_SPINS - config.change_spin + 1, config.sequential_alternative_probability),
+                )
+            ),
+            config.change_spin,
+        ),
+    )
+    rows: list[pd.DataFrame] = []
+    for scenario, seed, probabilities, true_change_spin in scenarios:
+        observations = np.random.default_rng(seed).binomial(1, probabilities)
+        cusum = cusum_change_detection(
+            observations,
+            p0=p0,
+            p1=config.sequential_alternative_probability,
+            threshold=config.cusum_threshold,
+        )
+        reliability = _cusum_reliability(
+            probabilities=probabilities,
+            p0=p0,
+            p1=config.sequential_alternative_probability,
+            threshold=config.cusum_threshold,
+            true_change_spin=true_change_spin,
+            experiments=config.power_experiments,
+            seed=seed + 100,
+        )
+        first_alarm = cusum.first_alarm or 0
+        detection_delay = (
+            first_alarm - true_change_spin
+            if true_change_spin and first_alarm >= true_change_spin
+            else -1
+        )
+        rows.append(
+            pd.DataFrame(
+                {
+                    "scenario": scenario,
+                    "spin": np.arange(1, _SHOWCASE_SPINS + 1),
+                    "target_hit": observations,
+                    "cusum_score": cusum.scores,
+                    "cusum_threshold": cusum.threshold,
+                    "null_probability": cusum.p0,
+                    "alternative_probability": cusum.p1,
+                    "seed": seed,
+                    "showcase_paths": 1,
+                    "monte_carlo_experiments": config.power_experiments,
+                    "monte_carlo_experiment_count": config.power_experiments,
+                    "true_change_spin": true_change_spin,
+                    "first_alarm": first_alarm,
+                    "detection_delay": detection_delay,
+                    "false_alarm_rate": reliability["false_alarm_rate"],
+                    "median_detection_delay": reliability["median_detection_delay"],
+                    "false_alarm_definition": reliability["false_alarm_definition"],
+                    "no_alarm_sentinel": "first_alarm=0; detection_delay=-1",
+                }
+            )
+        )
+    return pd.concat(rows, ignore_index=True)
+
+
+def _cusum_reliability(
+    *,
+    probabilities: np.ndarray,
+    p0: float,
+    p1: float,
+    threshold: float,
+    true_change_spin: int,
+    experiments: int,
+    seed: int,
+) -> dict[str, float | str]:
+    """Estimate fixed-scenario false alarms and changed-stream detection delays."""
+
+    observations = np.random.default_rng(seed).binomial(
+        1, probabilities, size=(experiments, probabilities.size)
+    )
+    hit_increment = np.log(p1 / p0)
+    miss_increment = np.log1p(-p1) - np.log1p(-p0)
+    scores = np.zeros(experiments, dtype=float)
+    first_alarm = np.zeros(experiments, dtype=int)
+    for index in range(probabilities.size):
+        increments = np.where(observations[:, index] == 1, hit_increment, miss_increment)
+        scores = np.maximum(0.0, scores + increments)
+        newly_alarmed = (first_alarm == 0) & (scores >= threshold)
+        first_alarm[newly_alarmed] = index + 1
+
+    if true_change_spin == 0:
+        return {
+            "false_alarm_rate": float(np.mean(first_alarm > 0)),
+            "median_detection_delay": -1.0,
+            "false_alarm_definition": "any_alarm_under_fair_null",
+        }
+    post_change = first_alarm >= true_change_spin
+    delays = first_alarm[post_change] - true_change_spin
+    return {
+        "false_alarm_rate": float(
+            np.mean((first_alarm > 0) & (first_alarm < true_change_spin))
+        ),
+        "median_detection_delay": float(np.median(delays)) if delays.size else -1.0,
+        "false_alarm_definition": "alarm_before_true_change",
+    }
+
+
+def _posterior_edge_table(config: AnalysisConfig, wheel) -> pd.DataFrame:
+    """Summarize the existing synthetic biased teaching sample as a Beta posterior."""
+
+    root = Path(__file__).resolve().parents[2]
+    sample = read_spin_csv(root / "data" / "example_biased_spins.csv", wheel)
+    hits = sample.spins.count(config.bias_label)
+    summary = posterior_edge_summary(
+        hits=hits,
+        trials=len(sample.spins),
+        prior_alpha=config.posterior_prior_alpha,
+        prior_beta=config.posterior_prior_beta,
+        net_odds=35.0,
+        level=0.95,
+        lower_quantile=config.posterior_lower_quantile,
+        future_trials=config.posterior_future_trials,
+    )
+    return pd.DataFrame(
+        [
+            {
+                "dataset": "biased_teaching_sample",
+                "label": config.bias_label,
+                "hits": hits,
+                "trials": len(sample.spins),
+                "dataset_seed": _BIASED_TEACHING_SAMPLE_SEED,
+                "prior_alpha": config.posterior_prior_alpha,
+                "prior_beta": config.posterior_prior_beta,
+                "credible_level": 0.95,
+                "posterior_alpha": summary.posterior_alpha,
+                "posterior_beta": summary.posterior_beta,
+                "posterior_mean": summary.posterior_mean,
+                "credible_interval_lower": summary.credible_interval[0],
+                "credible_interval_upper": summary.credible_interval[1],
+                "break_even_probability": summary.break_even_probability,
+                "probability_positive_edge": summary.probability_positive_edge,
+                "expected_net_return": summary.expected_net_return,
+                "plugin_kelly": summary.plugin_kelly,
+                "quantile_probability": summary.quantile_probability,
+                "quantile_kelly": summary.quantile_kelly,
+                "quantile_kelly_interpretation": "heuristic_lower_posterior_quantile",
+                "posterior_lower_quantile": config.posterior_lower_quantile,
+                "predictive_future_trials": config.posterior_future_trials,
+                "predictive_interval_lower": summary.predictive_interval[0],
+                "predictive_interval_upper": summary.predictive_interval[1],
+            }
+        ]
+    )
+
+
+def _risk_frontier_table(config: AnalysisConfig, wheel) -> pd.DataFrame:
+    """Build quarter, half, and full Kelly results on common random outcomes."""
+
+    bet = make_standard_bet(BetKind.STRAIGHT, (config.bias_label,), wheel)
+    base_config = BankrollConfig(
+        initial_bankroll=config.initial_bankroll,
+        base_stake=config.base_stake,
+        spins=config.bankroll_spins,
+        paths=config.bankroll_paths,
+        strategy=StrategyKind.FLAT,
+        estimated_win_probability=config.bias_probability,
+        min_chip=config.min_chip,
+        table_limit=config.table_limit,
+        stop_loss=config.stop_loss,
+        take_profit=config.take_profit,
+    )
+    frontier = build_risk_frontier(
+        base_config,
+        wheel,
+        bet,
+        SpecialRule.STANDARD,
+        config.risk_multipliers,
+        seed=config.seed + 500,
+    )
+    return frontier.assign(
+        scenario=f"{config.bias_label}_probability_{config.bias_probability:.3f}",
+        assumed_win_probability=config.bias_probability,
+        seed=config.seed + 500,
+        paths=config.bankroll_paths,
+        spins=config.bankroll_spins,
+        common_random_numbers=True,
+        expected_log_growth_convention="mean_log_terminal_equity_ratio",
+    )
+
+
 def _analysis_summary(bundle: AnalysisBundle) -> str:
     biased = bundle.bias_tests.loc[bundle.bias_tests["dataset"] == "biased"].iloc[0]
     best_power = bundle.detection_power.iloc[-1]
+    changed = bundle.change_point_results.loc[
+        bundle.change_point_results["scenario"] == f"changed_at_{bundle.config.change_spin}"
+    ].iloc[0]
+    posterior = bundle.posterior_edge.iloc[0]
     return (
         "# Reproducible analysis summary\n\n"
         "## Selection-aware bias evidence\n\n"
@@ -395,5 +682,10 @@ def _analysis_summary(bundle: AnalysisBundle) -> str:
         "Kelly sizing is conditional on a correct probability and payout model. It is an "
         "expected log-growth rule, not guaranteed profit. Strategy tables report simulated "
         "terminal dispersion, loss risk, ruin risk, and maximum drawdown under a declared "
-        "biased-wheel scenario.\n"
+        "biased-wheel scenario.\n\n"
+        "## Sequential and posterior extensions\n\n"
+        f"The changed-stream CUSUM showcase uses a true change at spin {int(changed.true_change_spin)} "
+        f"with a Monte Carlo median detection delay of {float(changed.median_detection_delay):.1f} spins. "
+        f"The biased teaching sample posterior mean is {float(posterior.posterior_mean):.4f}; its lower-quantile "
+        "Kelly value is labelled a heuristic rather than a betting recommendation.\n"
     )

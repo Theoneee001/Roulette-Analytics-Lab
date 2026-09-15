@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.stats
 from matplotlib.figure import Figure
 
 from .wheels import WheelKind, make_fair_wheel
@@ -159,6 +160,143 @@ def bankroll_risk_figure(table: pd.DataFrame) -> Figure:
     return figure
 
 
+def sequential_evidence_figure(table: pd.DataFrame) -> Figure:
+    """Plot the simple-null/simple-alternative e-value path on a log scale."""
+
+    _require_columns(table, "spin", "e_value", "e_value_threshold", "scenario")
+    subset = table.loc[table["scenario"] == "fair_null"].sort_values("spin")
+    if subset.empty:
+        raise ValueError("sequential evidence requires a fair_null scenario.")
+    figure, axis = _axes(
+        "Sequential likelihood-ratio evidence under a fair wheel",
+        "Spin",
+        "E-value (log scale)",
+    )
+    finite_display = np.maximum(subset["e_value"].to_numpy(dtype=float), np.finfo(float).tiny)
+    axis.semilogy(subset["spin"], finite_display, color=_BLUE, linewidth=1.6, label="Fair showcase path")
+    threshold = float(subset["e_value_threshold"].iloc[0])
+    axis.axhline(threshold, color=_RED, linestyle="--", linewidth=1.2, label="Evidence threshold")
+    first_crossing = int(subset["first_crossing"].iloc[0]) if "first_crossing" in subset else 0
+    if first_crossing > 0:
+        crossing = subset.loc[subset["spin"] == first_crossing].iloc[0]
+        axis.scatter([first_crossing], [crossing["e_value"]], color=_RED, zorder=3, label="First crossing")
+    axis.legend(frameon=False, loc="best")
+    return figure
+
+
+def change_point_cusum_figure(table: pd.DataFrame) -> Figure:
+    """Plot fair and changed CUSUM showcase paths with decision references."""
+
+    _require_columns(
+        table,
+        "scenario",
+        "spin",
+        "cusum_score",
+        "cusum_threshold",
+        "true_change_spin",
+        "first_alarm",
+    )
+    figure, axis = _axes(
+        "Page CUSUM: fair versus changed showcase streams",
+        "Spin",
+        "CUSUM score",
+    )
+    colours = {"fair_null": _BLUE, "changed": _GREEN}
+    for scenario, subset in table.groupby("scenario", sort=False):
+        subset = subset.sort_values("spin")
+        colour = colours["fair_null"] if scenario == "fair_null" else colours["changed"]
+        label = "Fair null path" if scenario == "fair_null" else "Changed path"
+        axis.plot(subset["spin"], subset["cusum_score"], color=colour, linewidth=1.5, label=label)
+        first_alarm = int(subset["first_alarm"].iloc[0])
+        if first_alarm > 0:
+            alarm = subset.loc[subset["spin"] == first_alarm].iloc[0]
+            axis.scatter([first_alarm], [alarm["cusum_score"]], color=_RED, marker="o", zorder=4)
+            axis.annotate("First alarm", (first_alarm, alarm["cusum_score"]), xytext=(6, 8), textcoords="offset points", fontsize=8, color=_INK)
+    threshold = float(table["cusum_threshold"].iloc[0])
+    axis.axhline(threshold, color=_RED, linestyle="--", linewidth=1.2, label="CUSUM threshold")
+    changed = table.loc[table["true_change_spin"] > 0]
+    if not changed.empty:
+        change_spin = int(changed["true_change_spin"].iloc[0])
+        axis.axvline(change_spin, color=_GOLD, linestyle=":", linewidth=1.5, label="True change")
+    axis.legend(frameon=False, loc="upper left")
+    return figure
+
+
+def posterior_edge_figure(table: pd.DataFrame) -> Figure:
+    """Show the teaching-sample posterior beside its break-even probability."""
+
+    _require_columns(
+        table,
+        "posterior_alpha",
+        "posterior_beta",
+        "break_even_probability",
+        "credible_interval_lower",
+        "credible_interval_upper",
+    )
+    row = table.iloc[0]
+    right = min(
+        1.0,
+        max(
+            float(row["credible_interval_upper"]) * 1.35,
+            float(row["break_even_probability"]) * 1.7,
+            float(row["posterior_mean"]) * 1.4,
+        ),
+    )
+    x = np.linspace(0.0, right, 500)
+    density = scipy.stats.beta.pdf(x, float(row["posterior_alpha"]), float(row["posterior_beta"]))
+    figure, axis = _axes(
+        "Posterior probability for the biased teaching sample",
+        "Pocket probability",
+        "Posterior density",
+    )
+    axis.plot(x, density, color=_BLUE, linewidth=2, label="Beta posterior")
+    interval = (x >= float(row["credible_interval_lower"])) & (x <= float(row["credible_interval_upper"]))
+    axis.fill_between(x[interval], density[interval], color=_BLUE, alpha=0.16, label="95% credible interval")
+    axis.axvline(float(row["break_even_probability"]), color=_RED, linestyle="--", linewidth=1.3, label="Break-even probability")
+    axis.axvline(float(row["posterior_mean"]), color=_GREEN, linestyle=":", linewidth=1.5, label="Posterior mean")
+    axis.legend(frameon=False, loc="best")
+    return figure
+
+
+def risk_frontier_figure(table: pd.DataFrame) -> Figure:
+    """Compare expected log growth across explicitly labelled Kelly fractions."""
+
+    _require_columns(
+        table,
+        "kelly_fraction_multiplier",
+        "strategy",
+        "expected_log_growth",
+        "terminal_cvar_shortfall",
+    )
+    ordered = table.sort_values("kelly_fraction_multiplier")
+    fractions = ordered["kelly_fraction_multiplier"].to_numpy(dtype=float)
+    growth = ordered["expected_log_growth"].to_numpy(dtype=float)
+    finite = np.isfinite(growth)
+    plot_growth = growth.copy()
+    if finite.any():
+        fallback = float(np.min(growth[finite]) - max(0.02, abs(np.min(growth[finite])) * 0.1))
+    else:
+        fallback = -1.0
+    plot_growth[~finite] = fallback
+    figure, axis = _axes(
+        "Kelly risk frontier under common random outcomes",
+        "Kelly fraction multiplier",
+        "Expected log growth",
+    )
+    axis.plot(fractions, plot_growth, color=_GREEN, marker="o", linewidth=2)
+    axis.margins(x=0.12)
+    for fraction, value, strategy, is_finite in zip(
+        fractions, plot_growth, ordered["strategy"], finite, strict=True
+    ):
+        label = f"{strategy.replace('_', ' ')} ({fraction:.0%})"
+        if not is_finite:
+            label += "; -inf"
+        axis.annotate(label, (fraction, value), xytext=(0, 8), textcoords="offset points", ha="center", fontsize=8, color=_INK)
+    axis.set_xticks(fractions, [f"{fraction:.0%}" for fraction in fractions])
+    axis.axhline(0.0, color=_INK, linewidth=0.8)
+    return figure
+
+
 def publication_figures(bundle: "AnalysisBundle") -> Mapping[str, Figure]:
     return {
         "01_wheel_layout.png": wheel_layout_figure(),
@@ -167,6 +305,10 @@ def publication_figures(bundle: "AnalysisBundle") -> Mapping[str, Figure]:
         "04_bias_residuals.png": residual_figure(bundle.observed_residuals),
         "05_detection_power.png": detection_power_figure(bundle.detection_power),
         "06_bankroll_risk.png": bankroll_risk_figure(bundle.strategy_risk),
+        "07_sequential_evidence.png": sequential_evidence_figure(bundle.sequential_evidence),
+        "08_change_point_cusum.png": change_point_cusum_figure(bundle.change_point_results),
+        "09_posterior_edge.png": posterior_edge_figure(bundle.posterior_edge),
+        "10_risk_frontier.png": risk_frontier_figure(bundle.risk_frontier),
     }
 
 

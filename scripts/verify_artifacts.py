@@ -110,8 +110,16 @@ def _verify_tables(root: Path) -> dict[str, pd.DataFrame]:
         "detection_power",
         "kelly_sensitivity",
         "strategy_risk",
+        "sequential_evidence",
+        "change_point_results",
+        "posterior_edge",
+        "risk_frontier",
     )
     tables = {name: _table(root, name) for name in names}
+    actual_names = {path.stem for path in (root / "outputs" / "tables").glob("*.csv")}
+    _require(actual_names == set(names), f"Expected eleven named result tables, found {sorted(actual_names)}")
+    _verify_v2_table_schemas(tables)
+    _verify_numeric_table_values(tables)
     edges = tables["house_edges"]
     expected_edges = {
         "european": 1 / 37,
@@ -131,6 +139,10 @@ def _verify_tables(root: Path) -> dict[str, pd.DataFrame]:
         row = _unique(edges, "rule", rule)
         _close(row["house_edge"], expected, 1e-12, labels[rule])
         _close(row["expected_net_return"], -expected, 1e-12, f"{rule} expected return")
+    _require(
+        float(_unique(edges, "rule", "european")["expected_net_return"]) <= 0.0,
+        "A fair European wheel must not report a positive player edge",
+    )
 
     lln = tables["lln_convergence"]
     final = lln.sort_values("spin").iloc[-1]
@@ -182,6 +194,155 @@ def _verify_tables(root: Path) -> dict[str, pd.DataFrame]:
     return tables
 
 
+def _verify_v2_table_schemas(tables: dict[str, pd.DataFrame]) -> None:
+    required_columns = {
+        "sequential_evidence": {
+            "scenario", "spin", "target_hit", "e_value", "e_value_threshold",
+            "fixed_horizon_p_value", "null_probability", "alternative_probability",
+            "alpha", "seed", "evidence_contract",
+        },
+        "change_point_results": {
+            "scenario", "spin", "target_hit", "cusum_score", "cusum_threshold",
+            "null_probability", "alternative_probability", "seed", "showcase_paths",
+            "monte_carlo_experiments", "monte_carlo_experiment_count",
+            "true_change_spin", "first_alarm", "detection_delay", "false_alarm_rate",
+            "median_detection_delay", "false_alarm_definition", "no_alarm_sentinel",
+        },
+        "posterior_edge": {
+            "dataset", "label", "hits", "trials", "dataset_seed", "prior_alpha",
+            "prior_beta", "posterior_mean", "credible_interval_lower",
+            "credible_interval_upper", "break_even_probability", "probability_positive_edge",
+            "plugin_kelly", "quantile_kelly", "quantile_kelly_interpretation",
+            "posterior_lower_quantile",
+        },
+        "risk_frontier": {
+            "kelly_fraction_multiplier", "strategy", "terminal_mean", "terminal_median",
+            "probability_of_loss", "expected_maximum_drawdown", "expected_log_growth",
+            "terminal_cvar_shortfall", "seed", "paths", "spins", "common_random_numbers",
+            "expected_log_growth_convention",
+        },
+    }
+    for name, required in required_columns.items():
+        missing = required - set(tables[name].columns)
+        _require(not missing, f"{name} schema is missing columns: {sorted(missing)}")
+
+    sequential = tables["sequential_evidence"]
+    _require(set(sequential["scenario"]) == {"fair_null"}, "Sequential evidence must use a fair_null path")
+    _require(len(sequential) == 1_000, "Sequential evidence must contain 1,000 path rows")
+    _require(
+        sequential["spin"].tolist() == list(range(1, 1_001)),
+        "Sequential evidence spins must run from 1 to 1,000",
+    )
+    _require(
+        (sequential["alternative_probability"] > sequential["null_probability"]).all(),
+        "Sequential evidence must retain its simple-null/simple-alternative ordering",
+    )
+    _require(
+        (sequential["evidence_contract"] == "simple_null_vs_simple_alternative").all(),
+        "Sequential evidence contract is not simple-null/simple-alternative",
+    )
+
+    change = tables["change_point_results"]
+    _require(len(change) == 2_000, "Change-point results must contain both 1,000-spin paths")
+    _require(set(change["scenario"]) == {"fair_null", "changed_at_500"}, "Change-point scenarios are incorrect")
+    repeated = (
+        "false_alarm_rate", "median_detection_delay", "monte_carlo_experiments",
+        "monte_carlo_experiment_count", "true_change_spin", "first_alarm", "detection_delay",
+    )
+    for scenario, subset in change.groupby("scenario"):
+        _require(len(subset) == 1_000, f"{scenario} must contain 1,000 per-spin rows")
+        _require(subset["spin"].tolist() == list(range(1, 1_001)), f"{scenario} spin path is incomplete")
+        _require(
+            (subset[list(repeated)].nunique() == 1).all(),
+            f"{scenario} must repeat scenario-level reliability fields on every path row",
+        )
+    _require(
+        change.loc[change["scenario"] == "fair_null", "true_change_spin"].eq(0).all(),
+        "Fair CUSUM path must have no true change",
+    )
+    _require(
+        change.loc[change["scenario"] == "changed_at_500", "true_change_spin"].eq(500).all(),
+        "Changed CUSUM path must record the true change at spin 500",
+    )
+
+    posterior = tables["posterior_edge"]
+    _require(len(posterior) == 1, "Posterior edge table must have one teaching-sample row")
+    _require(
+        posterior["quantile_kelly_interpretation"].eq("heuristic_lower_posterior_quantile").all(),
+        "Posterior quantile Kelly must be labelled heuristic",
+    )
+
+    frontier = tables["risk_frontier"]
+    _require(
+        frontier["kelly_fraction_multiplier"].tolist() == [0.25, 0.5, 1.0],
+        "Risk frontier must contain ordered quarter, half, and full Kelly rows",
+    )
+    _require(frontier["common_random_numbers"].all(), "Risk frontier must use common random numbers")
+
+
+def _verify_numeric_table_values(tables: dict[str, pd.DataFrame]) -> None:
+    """Require finite numeric output except the documented -inf log-growth case."""
+
+    for name, table in tables.items():
+        numeric = table.select_dtypes(include=[np.number])
+        for column in numeric:
+            values = numeric[column].to_numpy(dtype=float)
+            allowed_negative_infinity = (
+                name == "risk_frontier"
+                and column == "expected_log_growth"
+                and np.isneginf(values)
+            )
+            valid = np.isfinite(values) | allowed_negative_infinity
+            _require(valid.all(), f"Invalid numeric values in {name}.{column}")
+
+    probability_columns = {
+        "sequential_evidence": ("target_hit", "fixed_horizon_p_value", "null_probability", "alternative_probability", "alpha"),
+        "change_point_results": ("target_hit", "null_probability", "alternative_probability", "false_alarm_rate"),
+        "posterior_edge": (
+            "posterior_mean", "credible_interval_lower", "credible_interval_upper",
+            "break_even_probability", "probability_positive_edge", "plugin_kelly",
+            "quantile_probability", "quantile_kelly", "posterior_lower_quantile",
+        ),
+        "risk_frontier": ("kelly_fraction_multiplier", "probability_of_loss", "expected_maximum_drawdown"),
+    }
+    for name, columns in probability_columns.items():
+        for column in columns:
+            _require(
+                tables[name][column].between(0.0, 1.0).all(),
+                f"Invalid probability bounds in {name}.{column}",
+            )
+
+    change = tables["change_point_results"]
+    _require((change["cusum_score"] >= 0.0).all(), "CUSUM scores must be non-negative")
+    _require((change["cusum_threshold"] > 0.0).all(), "CUSUM threshold must be positive")
+    _require(change["first_alarm"].between(0, 1_000).all(), "Invalid first alarm spin")
+    _require(
+        ((change["detection_delay"] >= 0) | (change["detection_delay"] == -1)).all(),
+        "Detection delay must be non-negative or use the explicit -1 no-alarm sentinel",
+    )
+    _require(
+        (change["monte_carlo_experiments"] > 0).all(),
+        "Change-point Monte Carlo experiment count must be positive",
+    )
+    _require(
+        change["monte_carlo_experiments"].eq(change["monte_carlo_experiment_count"]).all(),
+        "Change-point Monte Carlo experiment count columns disagree",
+    )
+    posterior = tables["posterior_edge"]
+    _require(
+        (posterior["credible_interval_lower"] <= posterior["credible_interval_upper"]).all(),
+        "Posterior credible interval endpoints are out of order",
+    )
+    _require(
+        (posterior["quantile_kelly"] <= posterior["plugin_kelly"]).all(),
+        "Heuristic quantile Kelly must not exceed plug-in Kelly",
+    )
+    _require(
+        (tables["risk_frontier"]["terminal_cvar_shortfall"] >= 0.0).all(),
+        "Risk-frontier terminal CVaR shortfall must be non-negative",
+    )
+
+
 def _verify_public_text(root: Path, tables: dict[str, pd.DataFrame]) -> None:
     readme = _read(root / "README.md", "README")
     report = _read(root / "report" / "technical_report.md", "technical report")
@@ -190,7 +351,7 @@ def _verify_public_text(root: Path, tables: dict[str, pd.DataFrame]) -> None:
     _read(root / "docs" / "provenance.md", "provenance record")
     _read(root / "docs" / "ai_workflow.md", "AI workflow")
     _read(root / "docs" / "methodology_map.md", "methodology map")
-    _read(root / "docs" / "deliverables_checklist.md", "deliverables checklist")
+    checklist = _read(root / "docs" / "deliverables_checklist.md", "deliverables checklist")
 
     report_words = _count_report_prose(report)
     _require(3_000 <= report_words <= 5_000, f"Technical report word count is {report_words}")
@@ -227,6 +388,14 @@ def _verify_public_text(root: Path, tables: dict[str, pd.DataFrame]) -> None:
     for headline in required_report:
         _require(headline in report, f"Report headline mismatch: {headline}")
 
+    manual_baseline_phrases = (
+        "Existing seven tables and six figures remain.",
+        "The final release contains eleven tables and ten figures.",
+    )
+    for phrase in manual_baseline_phrases:
+        _require(phrase in readme, f"README baseline phrase mismatch: {phrase}")
+        _require(phrase in checklist, f"Deliverables checklist baseline phrase mismatch: {phrase}")
+
 
 def _verify_notebook(root: Path) -> None:
     path = root / "notebooks" / "roulette_analytics.ipynb"
@@ -246,11 +415,28 @@ def _verify_notebook(root: Path) -> None:
 
 def _verify_figures_and_pdf(root: Path) -> None:
     figures = sorted((root / "outputs" / "figures").glob("*.png"))
-    _require(len(figures) == 6, f"Expected six publication figures, found {len(figures)}")
+    expected = {
+        "01_wheel_layout.png",
+        "02_house_edge_comparison.png",
+        "03_lln_convergence.png",
+        "04_bias_residuals.png",
+        "05_detection_power.png",
+        "06_bankroll_risk.png",
+        "07_sequential_evidence.png",
+        "08_change_point_cusum.png",
+        "09_posterior_edge.png",
+        "10_risk_frontier.png",
+    }
+    _require(
+        {path.name for path in figures} == expected,
+        f"Expected ten named publication figures, found {[path.name for path in figures]}",
+    )
     for path in figures:
         with Image.open(path) as image:
             width, height = image.size
+            extrema = image.convert("RGB").getextrema()
         _require(width >= 1_000 and height >= 700, f"Figure dimensions too small: {path.name}")
+        _require(any(low < high for low, high in extrema), f"Figure is blank: {path.name}")
     pdf = root / "report" / "technical_report.pdf"
     _require(pdf.is_file() and pdf.stat().st_size > 50_000, "Missing or undersized report PDF")
 
