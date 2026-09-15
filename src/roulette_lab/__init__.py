@@ -50,6 +50,12 @@ from .sequential import (
 )
 from .decision import PosteriorEdgeSummary, posterior_edge_summary
 from .risk import build_risk_frontier, conditional_value_at_risk
+from .experiment import (
+    ExperimentState,
+    advance_experiment,
+    new_experiment,
+    reset_experiment,
+)
 
 __all__ = [
     "BetKind",
@@ -60,6 +66,7 @@ __all__ = [
     "BankrollSimulation",
     "CUSUMResult",
     "EnPrisonState",
+    "ExperimentState",
     "FairnessResult",
     "MaxCountResult",
     "Pocket",
@@ -75,6 +82,7 @@ __all__ = [
     "SpinDataset",
     "expected_net_return",
     "build_risk_frontier",
+    "advance_experiment",
     "conditional_value_at_risk",
     "house_edge",
     "kelly_fraction",
@@ -87,9 +95,11 @@ __all__ = [
     "make_standard_bet",
     "max_count_test",
     "monte_carlo_global_pvalue",
+    "new_experiment",
     "estimate_detection_power",
     "posterior_edge_summary",
     "read_spin_csv",
+    "reset_experiment",
     "run_full_analysis",
     "simulate_spin_counts",
     "simulate_bankroll",
