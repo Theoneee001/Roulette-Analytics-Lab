@@ -36,4 +36,4 @@ No publication requirement was intentionally omitted. The only environmental dev
 
 ## Commit
 
-Pending final commit amendment.
+The Task 6 publication implementation commit is `ac0eeae8f1550d8a516d77dca76a6076f80dd456` with message `docs: publish the v2 research narrative`.
