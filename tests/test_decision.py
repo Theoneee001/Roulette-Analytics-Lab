@@ -57,6 +57,24 @@ def test_posterior_edge_summary_rejects_invalid_inputs(arguments, message):
         posterior_edge_summary(*arguments)
 
 
+def test_posterior_edge_summary_rejects_nonfinite_beta_shape_sum():
+    largest_float = np.finfo(float).max
+
+    with pytest.raises(ValueError, match="shape sums must be finite"):
+        posterior_edge_summary(
+            0, 0, largest_float, largest_float, 35.0, 0.95, 0.10, 1
+        )
+
+
+def test_posterior_edge_summary_rejects_future_trials_above_scipy_integer_range():
+    too_many_future_trials = int(np.iinfo(np.intp).max) + 1
+
+    with pytest.raises(ValueError, match="future_trials must be at most"):
+        posterior_edge_summary(
+            0, 0, 1.0, 36.0, 35.0, 0.95, 0.10, too_many_future_trials
+        )
+
+
 def test_decision_interface_is_exported_from_package():
     from roulette_lab import (  # noqa: PLC0415
         PosteriorEdgeSummary,

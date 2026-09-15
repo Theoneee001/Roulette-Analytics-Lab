@@ -425,6 +425,45 @@ def test_risk_summary_maximum_drawdown_uses_running_path_peaks():
     assert summary.terminal_cvar_shortfall == pytest.approx(10.0)
 
 
+def test_risk_summary_prior_positional_constructor_defaults_terminal_cvar():
+    summary = RiskSummary(
+        100.0,
+        99.0,
+        5.0,
+        90.0,
+        110.0,
+        0.25,
+        0.01,
+        0.30,
+        0.20,
+        50,
+        100,
+    )
+
+    assert summary.probability_of_loss == pytest.approx(0.25)
+    assert summary.path_count == 50
+    assert summary.spin_count == 100
+    assert summary.terminal_cvar_shortfall == 0.0
+
+
+def test_risk_summary_prior_keyword_constructor_defaults_terminal_cvar():
+    summary = RiskSummary(
+        terminal_mean=100.0,
+        terminal_median=99.0,
+        terminal_standard_deviation=5.0,
+        terminal_percentile_5=90.0,
+        terminal_percentile_95=110.0,
+        probability_of_loss=0.25,
+        probability_of_ruin=0.01,
+        expected_maximum_drawdown=0.30,
+        median_maximum_drawdown=0.20,
+        path_count=50,
+        spin_count=100,
+    )
+
+    assert summary.terminal_cvar_shortfall == 0.0
+
+
 def test_one_spin_mean_agrees_with_analytical_expectation_within_five_mc_standard_errors():
     wheel = make_fair_wheel(WheelKind.EUROPEAN)
     bet = make_standard_bet(BetKind.STRAIGHT, ("17",), wheel)

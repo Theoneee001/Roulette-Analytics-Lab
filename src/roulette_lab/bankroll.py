@@ -205,13 +205,13 @@ class RiskSummary:
     terminal_standard_deviation: float
     terminal_percentile_5: float
     terminal_percentile_95: float
-    terminal_cvar_shortfall: float
     probability_of_loss: float
     probability_of_ruin: float
     expected_maximum_drawdown: float
     median_maximum_drawdown: float
     path_count: int
     spin_count: int
+    terminal_cvar_shortfall: float = 0.0
 
     @property
     def number_of_paths(self) -> int:

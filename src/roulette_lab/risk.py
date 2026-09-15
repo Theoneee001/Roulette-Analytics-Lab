@@ -124,7 +124,17 @@ def _nonnegative_integer(value: object, name: str) -> int:
 
 
 def _validated_fractions(fractions: ArrayLike) -> tuple[float, ...]:
-    values = _finite_vector(fractions, "fractions")
+    try:
+        raw_values = np.asarray(fractions, dtype=object)
+    except (TypeError, ValueError) as error:
+        raise ValueError(
+            "fractions must be a non-empty finite one-dimensional array."
+        ) from error
+    if raw_values.ndim != 1 or raw_values.size == 0:
+        raise ValueError("fractions must be a non-empty finite one-dimensional array.")
+    if any(isinstance(value, (bool, np.bool_)) for value in raw_values):
+        raise ValueError("fractions must not contain Boolean values.")
+    values = _finite_vector(raw_values, "fractions")
     normalized = tuple(sorted(float(value) for value in values))
     if any(value not in _FRACTION_STRATEGIES for value in normalized):
         raise ValueError("fractions must contain only 0.25, 0.5, and 1.0.")

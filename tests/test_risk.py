@@ -77,6 +77,13 @@ def test_risk_frontier_rejects_unsupported_or_ambiguous_multipliers(fractions):
         build_risk_frontier(base_config, wheel, bet, rule, fractions, seed=7)
 
 
+def test_risk_frontier_rejects_bool_multiplier_before_numeric_coercion():
+    base_config, wheel, bet, rule = _frontier_inputs()
+
+    with pytest.raises(ValueError, match="fractions"):
+        build_risk_frontier(base_config, wheel, bet, rule, [True], seed=7)
+
+
 def test_risk_interface_is_exported_from_package():
     from roulette_lab import (  # noqa: PLC0415
         build_risk_frontier as exported_build_risk_frontier,

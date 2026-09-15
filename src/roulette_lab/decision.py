@@ -13,6 +13,9 @@ import scipy.stats
 from .bets import kelly_fraction
 
 
+_MAX_SCIPY_FUTURE_TRIALS = int(np.iinfo(np.intp).max)
+
+
 @dataclass(frozen=True, slots=True)
 class PosteriorEdgeSummary:
     """Beta-posterior edge estimates and a heuristic Kelly stake comparison.
@@ -56,11 +59,12 @@ def posterior_edge_summary(
     net_odds = _positive_finite(net_odds, "net_odds")
     level = _open_unit(level, "level")
     lower_quantile = _open_unit(lower_quantile, "lower_quantile")
-    future_trials = _nonnegative_integer(future_trials, "future_trials")
+    future_trials = _scipy_trial_count(future_trials, "future_trials")
 
-    posterior_alpha = prior_alpha + hits
-    posterior_beta = prior_beta + trials - hits
-    posterior_mean = posterior_alpha / (posterior_alpha + posterior_beta)
+    posterior_alpha, posterior_beta, posterior_shape_sum = _posterior_shapes(
+        hits, trials, prior_alpha, prior_beta
+    )
+    posterior_mean = posterior_alpha / posterior_shape_sum
     credible_interval = scipy.stats.beta.interval(level, posterior_alpha, posterior_beta)
     break_even_probability = 1.0 / (net_odds + 1.0)
     probability_positive_edge = scipy.stats.beta.sf(
@@ -100,6 +104,39 @@ def _nonnegative_integer(value: object, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, Integral) or int(value) < 0:
         raise ValueError(f"{name} must be a non-negative integer.")
     return int(value)
+
+
+def _scipy_trial_count(value: object, name: str) -> int:
+    count = _nonnegative_integer(value, name)
+    if count > _MAX_SCIPY_FUTURE_TRIALS:
+        raise ValueError(
+            f"{name} must be at most {_MAX_SCIPY_FUTURE_TRIALS} "
+            "for SciPy's integer range."
+        )
+    return count
+
+
+def _posterior_shapes(
+    hits: int, trials: int, prior_alpha: float, prior_beta: float
+) -> tuple[float, float, float]:
+    try:
+        prior_shape_sum = prior_alpha + prior_beta
+        posterior_alpha = prior_alpha + hits
+        posterior_beta = prior_beta + trials - hits
+        posterior_shape_sum = posterior_alpha + posterior_beta
+    except OverflowError as error:
+        raise ValueError("Prior and posterior shape sums must be finite.") from error
+    if not all(
+        np.isfinite(value)
+        for value in (
+            prior_shape_sum,
+            posterior_alpha,
+            posterior_beta,
+            posterior_shape_sum,
+        )
+    ):
+        raise ValueError("Prior and posterior shape sums must be finite.")
+    return posterior_alpha, posterior_beta, posterior_shape_sum
 
 
 def _positive_finite(value: object, name: str) -> float:
