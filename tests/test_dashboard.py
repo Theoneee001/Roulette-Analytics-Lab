@@ -7,13 +7,17 @@ import pytest
 from roulette_lab.dashboard import (
     DashboardInputs,
     BankrollView,
+    LiveExperimentView,
     FairnessView,
     WheelView,
     build_bankroll_view,
     build_fairness_view,
+    build_live_experiment_view,
     build_wheel_view,
     validate_dashboard_inputs,
 )
+from roulette_lab.bets import BetKind, SpecialRule, make_standard_bet
+from roulette_lab.experiment import advance_experiment, new_experiment
 from roulette_lab.io import SpinDataset
 from roulette_lab.wheels import WheelKind, make_fair_wheel
 
@@ -123,3 +127,33 @@ def test_mobile_css_allows_titles_and_notices_to_wrap():
     assert "white-space: normal !important" in source
     assert "overflow-wrap: anywhere" in source
     assert "[data-baseweb=\"tab-list\"] { overflow-x: auto" in source
+
+
+def test_live_view_updates_all_evidence_from_history():
+    inputs = DashboardInputs.fast_test()
+    wheel = make_fair_wheel(WheelKind(inputs.wheel_kind))
+    bet = make_standard_bet(BetKind(inputs.bet_kind), inputs.selection, wheel)
+    state = advance_experiment(
+        new_experiment(inputs.seed, inputs.initial_bankroll),
+        wheel,
+        bet,
+        SpecialRule(inputs.rule),
+        10.0,
+        50,
+    )
+
+    view = build_live_experiment_view(state, inputs)
+
+    assert isinstance(view, LiveExperimentView)
+    assert view.sample_size == 50
+    assert len(view.running_frequency) == 50
+    assert len(view.e_values) == 50
+    assert 0 <= view.posterior.probability_positive_edge <= 1
+
+
+def test_live_view_exposes_explicit_empty_history_state():
+    inputs = DashboardInputs.fast_test()
+    view = build_live_experiment_view(new_experiment(inputs.seed, inputs.initial_bankroll), inputs)
+
+    assert view.sample_size == 0
+    assert view.empty_message is not None

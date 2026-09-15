@@ -9,7 +9,11 @@ import pandas as pd
 
 from .bankroll import BankrollConfig, RiskSummary, StrategyKind, simulate_bankroll, summarize_bankroll
 from .bets import BetKind, SpecialRule, house_edge, kelly_fraction, make_standard_bet
+from .decision import PosteriorEdgeSummary, posterior_edge_summary
+from .experiment import ExperimentState
 from .io import SpinDataset
+from .risk import build_risk_frontier
+from .sequential import CUSUMResult, SequentialEvidence, cusum_change_detection, likelihood_ratio_path
 from .statistics import chi_square_fairness, max_count_test, monte_carlo_global_pvalue
 from .wheels import WheelKind, make_fair_wheel, wheel_with_single_pocket_probability
 
@@ -37,6 +41,14 @@ class DashboardInputs:
     seed: int = 20260912
     odds_mode: str = "Casino standard"
     custom_net_odds: float | None = None
+    target_probability: float = 0.60
+    cusum_threshold: float = 3.0
+    posterior_prior_strength: float = 37.0
+    credible_level: float = 0.95
+    conservative_quantile: float = 0.10
+    future_spins: int = 100
+    cvar_level: float = 0.05
+    live_stake: float = 10.0
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "wheel_kind", WheelKind(self.wheel_kind).value)
@@ -71,6 +83,12 @@ class DashboardInputs:
             _require_positive(self.custom_net_odds, "custom_net_odds")
         elif self.custom_net_odds is not None:
             raise ValueError("custom_net_odds requires Custom hypothetical mode.")
+        for name in ("target_probability", "credible_level", "conservative_quantile", "cvar_level"):
+            if not _is_number(getattr(self, name)) or not 0 < getattr(self, name) < 1:
+                raise ValueError(f"{name} must be strictly between zero and one.")
+        for name in ("cusum_threshold", "posterior_prior_strength", "live_stake"):
+            _require_positive(getattr(self, name), name)
+        _require_positive_integer(self.future_spins, "future_spins")
 
     @classmethod
     def fast_test(cls) -> "DashboardInputs":
@@ -110,6 +128,44 @@ class BankrollView:
     scenario_notice: str
     no_edge_message: str | None
     summary_table: pd.DataFrame
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceView:
+    """Sequential evidence diagnostics derived from the current experiment."""
+
+    evidence: SequentialEvidence | None
+    cusum: CUSUMResult | None
+    p0: float
+    p1: float
+    no_alarm_message: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class LiveExperimentView:
+    """A single history-backed view for the live experiment tab."""
+
+    sample_size: int
+    hits: int
+    bankroll: float
+    result: str | None
+    running_frequency: np.ndarray
+    posterior_band: tuple[np.ndarray, np.ndarray]
+    e_values: np.ndarray
+    cusum_scores: np.ndarray
+    posterior: PosteriorEdgeSummary
+    evidence: EvidenceView
+    empty_message: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionRiskView:
+    """Posterior decision and forward bankroll risk results."""
+
+    posterior: PosteriorEdgeSummary
+    frontier: pd.DataFrame
+    bankroll: BankrollView
+    no_edge_message: str | None
 
 
 def validate_dashboard_inputs(values: Mapping[str, object]) -> DashboardInputs:
@@ -261,6 +317,77 @@ def build_bankroll_view(inputs: DashboardInputs) -> BankrollView:
     )
 
 
+def build_live_experiment_view(state: ExperimentState, inputs: DashboardInputs) -> LiveExperimentView:
+    """Compose live frequencies, posterior uncertainty, and sequential evidence."""
+
+    if not isinstance(state, ExperimentState):
+        raise TypeError("state must be an ExperimentState.")
+    wheel, bet, _ = _scenario(inputs)
+    if set(state.history) - set(wheel.labels):
+        raise ValueError("experiment history must match the selected wheel.")
+    p0 = float(sum(probability for label, probability in zip(wheel.labels, wheel.probabilities, strict=True) if label in bet.covered_labels))
+    p1 = float(inputs.target_probability)
+    if p1 <= p0:
+        raise ValueError("target_probability must exceed the selected bet probability.")
+    observations = np.asarray([label in bet.covered_labels for label in state.history], dtype=np.int64)
+    hits = int(observations.sum())
+    prior_alpha = p0 * inputs.posterior_prior_strength
+    prior_beta = (1.0 - p0) * inputs.posterior_prior_strength
+    posterior = posterior_edge_summary(
+        hits, len(observations), prior_alpha, prior_beta, bet.net_odds,
+        inputs.credible_level, inputs.conservative_quantile, inputs.future_spins,
+    )
+    if observations.size == 0:
+        empty = "No spins recorded. Run a single spin or a batch to initialise the evidence paths."
+        return LiveExperimentView(
+            sample_size=0, hits=0, bankroll=state.bankroll, result=None,
+            running_frequency=np.array([], dtype=float),
+            posterior_band=(np.array([], dtype=float), np.array([], dtype=float)),
+            e_values=np.array([], dtype=float), cusum_scores=np.array([], dtype=float),
+            posterior=posterior,
+            evidence=EvidenceView(None, None, p0, p1, "CUSUM is waiting for observations."),
+            empty_message=empty,
+        )
+    running_frequency = np.cumsum(observations, dtype=float) / np.arange(1, observations.size + 1)
+    lower, upper = _posterior_bands(observations, prior_alpha, prior_beta, inputs.credible_level)
+    evidence = likelihood_ratio_path(observations, p0, p1, inputs.alpha)
+    cusum = cusum_change_detection(observations, p0, p1, inputs.cusum_threshold)
+    evidence_view = EvidenceView(
+        evidence=evidence,
+        cusum=cusum,
+        p0=p0,
+        p1=p1,
+        no_alarm_message=None if cusum.first_alarm is not None else "No CUSUM alarm has crossed the declared threshold.",
+    )
+    return LiveExperimentView(
+        sample_size=int(observations.size), hits=hits, bankroll=state.bankroll,
+        result=state.history[-1], running_frequency=running_frequency,
+        posterior_band=(lower, upper), e_values=evidence.e_values,
+        cusum_scores=cusum.scores, posterior=posterior, evidence=evidence_view,
+        empty_message=None,
+    )
+
+
+def build_decision_risk_view(state: ExperimentState, inputs: DashboardInputs) -> DecisionRiskView:
+    """Return the posterior decision and common-random-number risk frontier."""
+
+    live = build_live_experiment_view(state, inputs)
+    wheel, bet, rule = _scenario(inputs)
+    config = BankrollConfig(
+        initial_bankroll=inputs.initial_bankroll, base_stake=inputs.base_stake,
+        spins=inputs.spins, paths=inputs.paths, strategy=StrategyKind.FLAT,
+        estimated_win_probability=live.posterior.posterior_mean, min_chip=inputs.min_chip,
+        table_limit=inputs.table_limit, stop_loss=inputs.stop_loss, take_profit=inputs.take_profit,
+        custom_net_odds=inputs.custom_net_odds if inputs.odds_mode == "Custom hypothetical" else None,
+    )
+    frontier = build_risk_frontier(config, wheel, bet, rule, [0.25, 0.5, 1.0], inputs.seed)
+    no_edge = (
+        "The posterior does not put more than half its mass above break-even. Kelly outputs are shown as zero-stake evidence."
+        if live.posterior.probability_positive_edge <= 0.5 else None
+    )
+    return DecisionRiskView(live.posterior, frontier, build_bankroll_view(inputs), no_edge)
+
+
 def _scenario(inputs: DashboardInputs):
     if not isinstance(inputs, DashboardInputs):
         raise TypeError("inputs must be DashboardInputs.")
@@ -274,6 +401,21 @@ def _scenario(inputs: DashboardInputs):
     rule = SpecialRule(inputs.rule)
     house_edge(wheel, bet, rule)
     return wheel, bet, rule
+
+
+def _posterior_bands(
+    observations: np.ndarray, prior_alpha: float, prior_beta: float, level: float
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return an expanding Beta posterior interval at every observed spin."""
+
+    import scipy.stats
+
+    cumulative_hits = np.cumsum(observations, dtype=float)
+    trials = np.arange(1, observations.size + 1, dtype=float)
+    tail = (1.0 - level) / 2.0
+    lower = scipy.stats.beta.ppf(tail, prior_alpha + cumulative_hits, prior_beta + trials - cumulative_hits)
+    upper = scipy.stats.beta.ppf(1.0 - tail, prior_alpha + cumulative_hits, prior_beta + trials - cumulative_hits)
+    return np.asarray(lower, dtype=float), np.asarray(upper, dtype=float)
 
 
 def _is_number(value: object) -> bool:
