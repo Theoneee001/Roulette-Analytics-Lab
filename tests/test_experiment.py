@@ -118,6 +118,123 @@ def test_en_prison_defers_zero_stake_until_a_later_nonzero_outcome():
     assert state.bankroll == 100.0
 
 
+def test_en_prison_pending_stake_settles_across_separate_advance_calls():
+    wheel = _zero_or_red_wheel()
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+
+    pending = advance_experiment(
+        new_experiment(8, 100.0), wheel, bet, SpecialRule.EN_PRISON, 10.0, 1
+    )
+    settled = advance_experiment(
+        pending, wheel, bet, SpecialRule.EN_PRISON, 10.0, 1
+    )
+
+    assert pending.history == ("0",)
+    assert pending.bankroll == 90.0
+    assert pending.imprisoned_stake == 10.0
+    assert settled.history == ("0", "1")
+    assert settled.bankroll == 100.0
+    assert settled.imprisoned_stake == 0.0
+
+
+def test_en_prison_repeated_zero_keeps_one_pending_stake_without_another_deduction():
+    wheel = _zero_or_red_wheel()
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+
+    first_zero = advance_experiment(
+        new_experiment(2, 100.0), wheel, bet, SpecialRule.EN_PRISON, 10.0, 1
+    )
+    second_zero = advance_experiment(
+        first_zero, wheel, bet, SpecialRule.EN_PRISON, 10.0, 1
+    )
+
+    assert second_zero.history == ("0", "0")
+    assert second_zero.bankroll == 90.0
+    assert second_zero.imprisoned_stake == 10.0
+
+
+def test_en_prison_subsequent_loss_clears_pending_stake_without_refund():
+    wheel = _zero_or_black_wheel()
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+
+    pending = advance_experiment(
+        new_experiment(8, 100.0), wheel, bet, SpecialRule.EN_PRISON, 10.0, 1
+    )
+    settled = advance_experiment(
+        pending, wheel, bet, SpecialRule.EN_PRISON, 10.0, 1
+    )
+
+    assert settled.history == ("0", "2")
+    assert settled.bankroll == 90.0
+    assert settled.imprisoned_stake == 0.0
+
+
+def test_reset_while_en_prison_stake_is_pending_returns_clean_initial_state():
+    wheel = _zero_or_red_wheel()
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+    initial = new_experiment(8, 100.0)
+    pending = advance_experiment(
+        initial, wheel, bet, SpecialRule.EN_PRISON, 10.0, 1
+    )
+
+    assert reset_experiment(pending) == initial
+
+
+@pytest.mark.parametrize("changed", ["rule", "bet", "wheel"])
+def test_en_prison_rejects_configuration_changes_without_mutating_pending_state(changed):
+    wheel = _zero_or_red_wheel()
+    bet = make_standard_bet(BetKind.RED, (), wheel)
+    pending = advance_experiment(
+        new_experiment(8, 100.0), wheel, bet, SpecialRule.EN_PRISON, 10.0, 1
+    )
+    original_values = (
+        pending.seed,
+        pending.initial_bankroll,
+        pending.history,
+        pending.bankroll,
+        pending.imprisoned_stake,
+    )
+    next_wheel = _weighted_zero_or_red_wheel() if changed == "wheel" else wheel
+    next_bet = (
+        make_standard_bet(BetKind.BLACK, (), wheel) if changed == "bet" else bet
+    )
+    next_rule = SpecialRule.STANDARD if changed == "rule" else SpecialRule.EN_PRISON
+
+    with pytest.raises(ValueError, match="unresolved En Prison wager"):
+        advance_experiment(
+            pending, next_wheel, next_bet, next_rule, 10.0, 1
+        )
+
+    assert (
+        pending.seed,
+        pending.initial_bankroll,
+        pending.history,
+        pending.bankroll,
+        pending.imprisoned_stake,
+    ) == original_values
+
+
+def test_en_prison_pending_stake_cannot_follow_double_pay_configuration_path():
+    wheel = _zero_or_red_wheel()
+    red = make_standard_bet(BetKind.RED, (), wheel)
+    straight_one = make_standard_bet(BetKind.STRAIGHT, ("1",), wheel)
+    pending = advance_experiment(
+        new_experiment(8, 100.0), wheel, red, SpecialRule.EN_PRISON, 10.0, 1
+    )
+
+    with pytest.raises(ValueError, match="unresolved En Prison wager"):
+        advance_experiment(
+            pending, wheel, straight_one, SpecialRule.STANDARD, 10.0, 1
+        )
+
+    settled = advance_experiment(
+        pending, wheel, red, SpecialRule.EN_PRISON, 10.0, 1
+    )
+    assert settled.history == ("0", "1")
+    assert settled.bankroll == 100.0
+    assert settled.imprisoned_stake == 0.0
+
+
 @pytest.mark.parametrize(
     "seed,initial_bankroll",
     [
@@ -157,4 +274,20 @@ def _zero_or_red_wheel():
     probabilities = np.zeros(len(base.labels))
     probabilities[base.labels.index("0")] = 0.5
     probabilities[base.labels.index("1")] = 0.5
+    return make_biased_wheel(WheelKind.EUROPEAN, probabilities)
+
+
+def _zero_or_black_wheel():
+    base = make_fair_wheel(WheelKind.EUROPEAN)
+    probabilities = np.zeros(len(base.labels))
+    probabilities[base.labels.index("0")] = 0.5
+    probabilities[base.labels.index("2")] = 0.5
+    return make_biased_wheel(WheelKind.EUROPEAN, probabilities)
+
+
+def _weighted_zero_or_red_wheel():
+    base = make_fair_wheel(WheelKind.EUROPEAN)
+    probabilities = np.zeros(len(base.labels))
+    probabilities[base.labels.index("0")] = 0.25
+    probabilities[base.labels.index("1")] = 0.75
     return make_biased_wheel(WheelKind.EUROPEAN, probabilities)

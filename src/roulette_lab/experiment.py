@@ -1,13 +1,28 @@
 """Immutable, reproducible live roulette experiment state."""
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from numbers import Integral, Real
 
 import numpy as np
 from numpy.typing import NDArray
 
 from .bets import BetSpec, SpecialRule, expected_net_return
-from .wheels import WheelSpec
+from .wheels import WheelKind, WheelSpec
+
+
+@dataclass(frozen=True, slots=True)
+class _WheelSignature:
+    kind: WheelKind
+    labels: tuple[str, ...]
+    colours: tuple[str, ...]
+    probabilities: tuple[float, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _PendingWager:
+    rule: SpecialRule
+    bet: BetSpec
+    wheel: _WheelSignature
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,6 +34,7 @@ class ExperimentState:
     history: tuple[str, ...] = ()
     bankroll: float = 0.0
     imprisoned_stake: float = 0.0
+    _pending_wager: _PendingWager | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         seed = _nonnegative_integer(self.seed, "seed")
@@ -26,6 +42,13 @@ class ExperimentState:
         history = _history(self.history)
         bankroll = _nonnegative_finite(self.bankroll, "bankroll")
         imprisoned_stake = _nonnegative_finite(self.imprisoned_stake, "imprisoned_stake")
+        pending_wager = self._pending_wager
+        if pending_wager is not None and not isinstance(pending_wager, _PendingWager):
+            raise TypeError("_pending_wager must be pending-wager configuration or None.")
+        if (imprisoned_stake > 0.0) != (pending_wager is not None):
+            raise ValueError(
+                "An imprisoned_stake requires its originating pending-wager configuration."
+            )
         object.__setattr__(self, "seed", seed)
         object.__setattr__(self, "initial_bankroll", initial_bankroll)
         object.__setattr__(self, "history", history)
@@ -70,6 +93,7 @@ def advance_experiment(
     rule = SpecialRule(rule)
     stake = _positive_finite(stake, "stake")
     count = _positive_integer(count, "count")
+    _validate_pending_wager(state, wheel, bet, rule)
     expected_net_return(wheel, bet, rule)
     _validate_history_membership(state.history, wheel)
 
@@ -80,14 +104,22 @@ def advance_experiment(
         p=wheel.probabilities,
     )
     appended = tuple(str(value) for value in draws[-count:])
-    bankroll, imprisoned_stake = _settle(
-        state.bankroll, state.imprisoned_stake, appended, bet, rule, stake
+    bankroll, imprisoned_stake, pending_wager = _settle(
+        state.bankroll,
+        state.imprisoned_stake,
+        state._pending_wager,
+        appended,
+        wheel,
+        bet,
+        rule,
+        stake,
     )
     return replace(
         state,
         history=state.history + appended,
         bankroll=bankroll,
         imprisoned_stake=imprisoned_stake,
+        _pending_wager=pending_wager,
     )
 
 
@@ -101,11 +133,13 @@ def reset_experiment(state: ExperimentState) -> ExperimentState:
 def _settle(
     bankroll: float,
     imprisoned_stake: float,
+    pending_wager: _PendingWager | None,
     results: tuple[str, ...],
+    wheel: WheelSpec,
     bet: BetSpec,
     rule: SpecialRule,
     stake: float,
-) -> tuple[float, float]:
+) -> tuple[float, float, _PendingWager | None]:
     covered_labels = frozenset(bet.covered_labels)
     for result in results:
         is_zero = result in {"0", "00"}
@@ -115,6 +149,7 @@ def _settle(
                 if is_win:
                     bankroll += imprisoned_stake
                 imprisoned_stake = 0.0
+                pending_wager = None
             continue
 
         wager = min(stake, bankroll)
@@ -128,7 +163,8 @@ def _settle(
             bankroll -= wager
             if rule is SpecialRule.EN_PRISON and is_zero:
                 imprisoned_stake = wager
-    return float(bankroll), float(imprisoned_stake)
+                pending_wager = _pending_wager_configuration(wheel, bet, rule)
+    return float(bankroll), float(imprisoned_stake), pending_wager
 
 
 def _wheel(wheel: WheelSpec) -> WheelSpec:
@@ -140,6 +176,35 @@ def _wheel(wheel: WheelSpec) -> WheelSpec:
 def _validate_history_membership(history: tuple[str, ...], wheel: WheelSpec) -> None:
     if set(history) - set(wheel.labels):
         raise ValueError("history labels must all be present on wheel.")
+
+
+def _validate_pending_wager(
+    state: ExperimentState,
+    wheel: WheelSpec,
+    bet: BetSpec,
+    rule: SpecialRule,
+) -> None:
+    if state.imprisoned_stake == 0.0:
+        return
+    if state._pending_wager != _pending_wager_configuration(wheel, bet, rule):
+        raise ValueError(
+            "Cannot change rule, bet, or wheel while an unresolved En Prison wager exists."
+        )
+
+
+def _pending_wager_configuration(
+    wheel: WheelSpec, bet: BetSpec, rule: SpecialRule
+) -> _PendingWager:
+    return _PendingWager(
+        rule=rule,
+        bet=bet,
+        wheel=_WheelSignature(
+            kind=wheel.kind,
+            labels=wheel.labels,
+            colours=wheel.colours,
+            probabilities=tuple(float(value) for value in wheel.probabilities),
+        ),
+    )
 
 
 def _history(history: object) -> tuple[str, ...]:
