@@ -27,6 +27,7 @@ from roulette_lab.dashboard import (  # noqa: E402
     build_decision_risk_view,
     build_live_experiment_view,
     build_wheel_view,
+    import_experiment_history,
 )
 from roulette_lab.experiment import advance_experiment, new_experiment, reset_experiment  # noqa: E402
 from roulette_lab.roulette_component import colours_for_rotor, rotor_order_for_labels, roulette_wheel_html  # noqa: E402
@@ -150,6 +151,28 @@ def _scenario_inputs() -> DashboardInputs:
         target_probability = st.number_input("Declared alternative probability", min_value=0.01, max_value=0.99, value=0.60, step=0.01, format="%.2f")
         cusum_threshold = st.number_input("CUSUM threshold", min_value=0.1, value=3.0, step=0.1)
         prior_strength = st.number_input("Posterior prior strength", min_value=0.1, value=37.0, step=1.0)
+        credible_level = st.select_slider(
+            "Credible interval level",
+            options=[0.80, 0.90, 0.95, 0.99],
+            value=0.95,
+            format_func=lambda value: f"{value:.0%}",
+            key="posterior-credible-level",
+        )
+        conservative_quantile = st.select_slider(
+            "Conservative posterior quantile",
+            options=[0.01, 0.05, 0.10, 0.20, 0.25],
+            value=0.10,
+            format_func=lambda value: f"{value:.0%}",
+            key="posterior-conservative-quantile",
+        )
+        future_spins = st.number_input(
+            "Predictive horizon (spins)",
+            min_value=10,
+            max_value=10_000,
+            value=100,
+            step=10,
+            key="posterior-future-spins",
+        )
         cvar_level = st.select_slider(
             "CVaR tail probability", options=[0.01, 0.025, 0.05, 0.10, 0.25], value=0.05
         )
@@ -166,7 +189,8 @@ def _scenario_inputs() -> DashboardInputs:
         bias_label="17", bias_probability=1 / len(wheel_labels), alpha=0.05, simulations=2000, seed=int(seed),
         odds_mode=odds_mode, custom_net_odds=custom_odds, target_probability=target_probability,
         cusum_threshold=cusum_threshold, posterior_prior_strength=prior_strength,
-        cvar_level=cvar_level,
+        credible_level=credible_level, conservative_quantile=conservative_quantile,
+        future_spins=int(future_spins), cvar_level=cvar_level,
     )
 
 
@@ -175,6 +199,8 @@ def _experiment_state(inputs: DashboardInputs):
     if st.session_state.get("experiment_signature") != signature:
         st.session_state.experiment_state = new_experiment(inputs.seed, inputs.initial_bankroll)
         st.session_state.experiment_signature = signature
+        st.session_state.pop("history_import_success", None)
+        st.session_state.pop("history_import_error", None)
     return st.session_state.experiment_state
 
 
@@ -188,6 +214,35 @@ def _render_live(view: LiveExperimentView, inputs: DashboardInputs, state) -> No
     wheel = make_fair_wheel(WheelKind(inputs.wheel_kind))
     rotor = rotor_order_for_labels(wheel.labels)
     _render_wheel_html(roulette_wheel_html(rotor, colours_for_rotor(rotor), view.result, view.sample_size, False))
+    with st.expander("Import history CSV"):
+        upload = st.file_uploader(
+            "History file",
+            type="csv",
+            key="history-import-file",
+            help="Use exactly two columns named spin and pocket, with consecutive spin numbers.",
+        )
+        import_requested = st.button(
+            "Import history",
+            key="history-import-submit",
+            disabled=upload is None,
+        )
+    if import_requested:
+        st.session_state.pop("history_import_success", None)
+        try:
+            imported_state = import_experiment_history(state, upload.getvalue(), wheel)
+        except (UnicodeError, ValueError) as error:
+            st.session_state.history_import_error = f"History import failed: {error}"
+        else:
+            st.session_state.pop("history_import_error", None)
+            st.session_state.experiment_state = imported_state
+            st.session_state.history_import_success = (
+                f"Imported {len(imported_state.history)} spins. Bankroll reset to the initial value."
+            )
+            st.rerun()
+    if message := st.session_state.get("history_import_success"):
+        st.success(message)
+    if message := st.session_state.get("history_import_error"):
+        st.error(message)
     controls = st.columns([1, 1, 1, 1, 1, 1])
     requests = [("Spin once", 1), ("Batch 10", 10), ("Batch 50", 50), ("Batch 100", 100)]
     for column, (label, count) in zip(controls[:4], requests, strict=True):
@@ -206,6 +261,8 @@ def _render_live(view: LiveExperimentView, inputs: DashboardInputs, state) -> No
     controls[4].download_button("Download history", history.to_csv(index=False), "roulette_history.csv", "text/csv", width="stretch")
     if controls[5].button("Reset", width="stretch"):
         st.session_state.experiment_state = reset_experiment(state)
+        st.session_state.pop("history_import_success", None)
+        st.session_state.pop("history_import_error", None)
         st.rerun()
     if view.empty_message:
         st.info(view.empty_message)

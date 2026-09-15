@@ -33,3 +33,18 @@ def test_component_rejects_noncanonical_physical_order_even_when_labels_match():
         roulette_wheel_html(
             wheel.labels, wheel.colours, result="17", spin_nonce=1, reduced_motion=False
         )
+
+
+def test_component_renders_the_validated_sector_colours():
+    html = roulette_wheel_html(
+        EUROPEAN_ROTOR_ORDER,
+        ("green",) * len(EUROPEAN_ROTOR_ORDER),
+        result="17",
+        spin_nonce=4,
+        reduced_motion=False,
+    )
+
+    gradient = html.split("background:conic-gradient", 1)[1].split(");", 1)[0]
+    assert gradient.count("#176046") == len(EUROPEAN_ROTOR_ORDER)
+    assert "#b62438" not in gradient
+    assert "#22231f" not in gradient

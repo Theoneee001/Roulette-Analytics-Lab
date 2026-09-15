@@ -98,10 +98,9 @@ def _validate_wheel_component_inputs(
 
 def _render_component_markup(values: _WheelComponentInputs, target_degrees: float, reduced_motion: bool) -> str:
     sector = 360.0 / len(values.labels)
-    physical_colours = colours_for_rotor(values.labels)
     segments = ", ".join(
         f"{_colour_hex(colour)} {index * sector:.5f}deg {(index + 1) * sector:.5f}deg"
-        for index, colour in enumerate(physical_colours)
+        for index, colour in enumerate(values.colours)
     )
     labels_markup = "".join(
         f'<span class="rl-pocket" style="--angle:{index * sector:.5f}deg">{html.escape(label)}</span>'

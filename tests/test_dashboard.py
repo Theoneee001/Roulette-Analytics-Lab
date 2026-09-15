@@ -15,6 +15,7 @@ from roulette_lab.dashboard import (
     build_fairness_view,
     build_live_experiment_view,
     build_wheel_view,
+    import_experiment_history,
     validate_dashboard_inputs,
 )
 from roulette_lab.bets import BetKind, SpecialRule, make_standard_bet
@@ -163,6 +164,100 @@ def test_live_view_updates_all_evidence_from_history():
     assert len(view.running_frequency) == 50
     assert len(view.e_values) == 50
     assert 0 <= view.posterior.probability_positive_edge <= 1
+
+
+def test_live_posterior_uses_credible_level_control():
+    state = ExperimentState(
+        seed=7,
+        initial_bankroll=1_000.0,
+        history=("17",) * 8 + ("0",) * 32,
+        bankroll=1_000.0,
+    )
+
+    narrow = build_live_experiment_view(
+        state, replace(DashboardInputs.fast_test(), credible_level=0.80)
+    )
+    wide = build_live_experiment_view(
+        state, replace(DashboardInputs.fast_test(), credible_level=0.99)
+    )
+
+    narrow_width = narrow.posterior.credible_interval[1] - narrow.posterior.credible_interval[0]
+    wide_width = wide.posterior.credible_interval[1] - wide.posterior.credible_interval[0]
+    assert narrow_width < wide_width
+
+
+def test_live_posterior_uses_conservative_quantile_control():
+    state = ExperimentState(
+        seed=7,
+        initial_bankroll=1_000.0,
+        history=("17",) * 8 + ("0",) * 32,
+        bankroll=1_000.0,
+    )
+
+    lower = build_live_experiment_view(
+        state, replace(DashboardInputs.fast_test(), conservative_quantile=0.05)
+    )
+    upper = build_live_experiment_view(
+        state, replace(DashboardInputs.fast_test(), conservative_quantile=0.25)
+    )
+
+    assert lower.posterior.quantile_kelly < upper.posterior.quantile_kelly
+
+
+def test_live_posterior_uses_future_spins_control():
+    state = ExperimentState(
+        seed=7,
+        initial_bankroll=1_000.0,
+        history=("17",) * 8 + ("0",) * 32,
+        bankroll=1_000.0,
+    )
+
+    short = build_live_experiment_view(
+        state, replace(DashboardInputs.fast_test(), future_spins=20)
+    )
+    long = build_live_experiment_view(
+        state, replace(DashboardInputs.fast_test(), future_spins=200)
+    )
+
+    assert short.posterior.predictive_interval != long.posterior.predictive_interval
+    assert short.posterior.predictive_interval[1] <= 20
+    assert long.posterior.predictive_interval[1] <= 200
+
+
+def test_valid_csv_import_replaces_history_and_resets_untracked_bankroll():
+    wheel = make_fair_wheel(WheelKind.EUROPEAN)
+    original = ExperimentState(
+        seed=11,
+        initial_bankroll=1_000.0,
+        history=("17", "0"),
+        bankroll=980.0,
+    )
+
+    imported = import_experiment_history(
+        original, b"spin,pocket\n1,3\n2,17\n3,0\n", wheel
+    )
+
+    assert imported.seed == original.seed
+    assert imported.initial_bankroll == original.initial_bankroll
+    assert imported.history == ("3", "17", "0")
+    assert imported.bankroll == original.initial_bankroll
+    assert imported.imprisoned_stake == 0.0
+
+
+def test_invalid_csv_import_preserves_previous_state():
+    wheel = make_fair_wheel(WheelKind.EUROPEAN)
+    original = ExperimentState(
+        seed=11,
+        initial_bankroll=1_000.0,
+        history=("17", "0"),
+        bankroll=980.0,
+    )
+
+    with pytest.raises(ValueError, match="Unknown pocket '00'"):
+        import_experiment_history(original, b"spin,pocket\n1,00\n", wheel)
+
+    assert original.history == ("17", "0")
+    assert original.bankroll == 980.0
 
 
 def test_live_view_exposes_explicit_empty_history_state():

@@ -2,7 +2,8 @@
 
 from dataclasses import dataclass, fields, replace
 from numbers import Integral, Real
-from typing import Mapping
+from os import PathLike
+from typing import BinaryIO, Mapping, TextIO
 
 import numpy as np
 import pandas as pd
@@ -11,11 +12,11 @@ from .bankroll import BankrollConfig, RiskSummary, StrategyKind, simulate_bankro
 from .bets import BetKind, SpecialRule, house_edge, kelly_fraction, make_standard_bet
 from .decision import PosteriorEdgeSummary, posterior_edge_summary
 from .experiment import ExperimentState
-from .io import SpinDataset
+from .io import SpinDataset, read_spin_csv
 from .risk import build_risk_frontier
 from .sequential import CUSUMResult, SequentialEvidence, cusum_change_detection, likelihood_ratio_path
 from .statistics import chi_square_fairness, max_count_test, monte_carlo_global_pvalue
-from .wheels import WheelKind, make_fair_wheel, wheel_with_single_pocket_probability
+from .wheels import WheelKind, WheelSpec, make_fair_wheel, wheel_with_single_pocket_probability
 
 
 @dataclass(frozen=True, slots=True)
@@ -225,6 +226,24 @@ def build_wheel_view(inputs: DashboardInputs) -> WheelView:
                 "high": [str(value) for value in range(3, 37, 3)],
             }
         ),
+    )
+
+
+def import_experiment_history(
+    state: ExperimentState,
+    source: str | PathLike[str] | bytes | bytearray | BinaryIO | TextIO,
+    wheel: WheelSpec,
+) -> ExperimentState:
+    """Atomically replace live evidence with a wheel-validated CSV history."""
+
+    if not isinstance(state, ExperimentState):
+        raise TypeError("state must be an ExperimentState.")
+    dataset = read_spin_csv(source, wheel)
+    return ExperimentState(
+        seed=state.seed,
+        initial_bankroll=state.initial_bankroll,
+        history=dataset.spins,
+        bankroll=state.initial_bankroll,
     )
 
 
