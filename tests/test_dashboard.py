@@ -11,13 +11,14 @@ from roulette_lab.dashboard import (
     FairnessView,
     WheelView,
     build_bankroll_view,
+    build_decision_risk_view,
     build_fairness_view,
     build_live_experiment_view,
     build_wheel_view,
     validate_dashboard_inputs,
 )
 from roulette_lab.bets import BetKind, SpecialRule, make_standard_bet
-from roulette_lab.experiment import advance_experiment, new_experiment
+from roulette_lab.experiment import ExperimentState, advance_experiment, new_experiment
 from roulette_lab.io import SpinDataset
 from roulette_lab.wheels import WheelKind, make_fair_wheel
 
@@ -58,6 +59,19 @@ def test_wheel_view_uses_exact_standard_economics_even_with_custom_scenario_odds
     assert view.standard_house_edge == pytest.approx(1 / 37)
     assert view.simulation_payout_label == "Custom hypothetical odds: 40:1"
     assert "hypothetical" in view.scenario_notice.lower()
+
+
+def test_wheel_view_exposes_canonical_table_geometry():
+    european = build_wheel_view(DashboardInputs.fast_test())
+    american = build_wheel_view(
+        replace(DashboardInputs.fast_test(), wheel_kind="american", bias_probability=1 / 38)
+    )
+
+    assert european.zero_pockets == ("0",)
+    assert american.zero_pockets == ("0", "00")
+    assert list(european.table_geometry.columns) == ["low", "middle", "high"]
+    assert european.table_geometry.iloc[0].tolist() == ["1", "2", "3"]
+    assert european.table_geometry.iloc[-1].tolist() == ["34", "35", "36"]
 
 
 def test_fairness_view_exposes_selection_warning():
@@ -157,3 +171,62 @@ def test_live_view_exposes_explicit_empty_history_state():
 
     assert view.sample_size == 0
     assert view.empty_message is not None
+
+
+def test_decision_risk_uses_live_posterior_mean_for_frontier_and_fan():
+    inputs = replace(DashboardInputs.fast_test(), paths=80, spins=40)
+    losing = ExperimentState(
+        inputs.seed,
+        inputs.initial_bankroll,
+        history=("0",) * 20,
+        bankroll=inputs.initial_bankroll,
+    )
+    winning = ExperimentState(
+        inputs.seed,
+        inputs.initial_bankroll,
+        history=("17",) * 20,
+        bankroll=inputs.initial_bankroll,
+    )
+
+    losing_view = build_decision_risk_view(losing, inputs)
+    winning_view = build_decision_risk_view(winning, inputs)
+
+    assert losing_view.decision_probability == losing_view.posterior.posterior_mean
+    assert winning_view.decision_probability == winning_view.posterior.posterior_mean
+    assert losing_view.decision_probability != winning_view.decision_probability
+    assert not np.array_equal(losing_view.bankroll.equity_data, winning_view.bankroll.equity_data)
+    assert not losing_view.frontier.equals(winning_view.frontier)
+
+
+def test_long_miss_history_retains_finite_log10_evidence_path():
+    inputs = DashboardInputs.fast_test()
+    state = ExperimentState(
+        inputs.seed,
+        inputs.initial_bankroll,
+        history=("0",) * 1_000,
+        bankroll=inputs.initial_bankroll,
+    )
+
+    view = build_live_experiment_view(state, inputs)
+
+    expected_last = 1_000 * np.log((1 - inputs.target_probability) / (1 - 1 / 37)) / np.log(10)
+    assert len(view.log10_evidence) == 1_000
+    assert np.all(np.isfinite(view.log10_evidence))
+    assert view.log10_evidence[-1] == pytest.approx(expected_last)
+    assert view.log10_threshold == pytest.approx(np.log10(1 / inputs.alpha))
+
+
+def test_live_evidence_includes_global_and_selection_aware_fairness():
+    inputs = DashboardInputs.fast_test()
+    state = ExperimentState(
+        inputs.seed,
+        inputs.initial_bankroll,
+        history=("17",) * 12 + ("0",) * 8,
+        bankroll=inputs.initial_bankroll,
+    )
+
+    view = build_live_experiment_view(state, inputs)
+
+    assert isinstance(view.fairness, FairnessView)
+    assert np.isfinite(view.fairness.chi_square_statistic)
+    assert view.fairness.familywise_p_value >= view.fairness.naive_p_value

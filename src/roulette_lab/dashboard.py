@@ -1,6 +1,6 @@
 """Testable view models for the Streamlit analytical workspace."""
 
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, replace
 from numbers import Integral, Real
 from typing import Mapping
 
@@ -103,6 +103,8 @@ class WheelView:
     simulation_payout_label: str
     scenario_notice: str
     probabilities: pd.DataFrame
+    zero_pockets: tuple[str, ...]
+    table_geometry: pd.DataFrame
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,9 +154,12 @@ class LiveExperimentView:
     running_frequency: np.ndarray
     posterior_band: tuple[np.ndarray, np.ndarray]
     e_values: np.ndarray
+    log10_evidence: np.ndarray
+    log10_threshold: float
     cusum_scores: np.ndarray
     posterior: PosteriorEdgeSummary
     evidence: EvidenceView
+    fairness: FairnessView | None
     empty_message: str | None
 
 
@@ -166,6 +171,8 @@ class DecisionRiskView:
     frontier: pd.DataFrame
     bankroll: BankrollView
     no_edge_message: str | None
+    decision_probability: float
+    cvar_level: float
 
 
 def validate_dashboard_inputs(values: Mapping[str, object]) -> DashboardInputs:
@@ -208,6 +215,14 @@ def build_wheel_view(inputs: DashboardInputs) -> WheelView:
                 "label": wheel.labels,
                 "colour": wheel.colours,
                 "probability": wheel.probabilities,
+            }
+        ),
+        zero_pockets=tuple(label for label in wheel.labels if label in {"0", "00"}),
+        table_geometry=pd.DataFrame(
+            {
+                "low": [str(value) for value in range(1, 35, 3)],
+                "middle": [str(value) for value in range(2, 36, 3)],
+                "high": [str(value) for value in range(3, 37, 3)],
             }
         ),
     )
@@ -280,7 +295,7 @@ def build_bankroll_view(inputs: DashboardInputs) -> BankrollView:
     simulation = simulate_bankroll(
         config, wheel, bet, rule, np.random.default_rng(inputs.seed)
     )
-    risk = summarize_bankroll(simulation)
+    risk = summarize_bankroll(simulation, inputs.cvar_level)
     no_edge = None
     if "kelly" in strategy.value and kelly_fraction(estimated, custom or bet.net_odds) == 0:
         no_edge = "The estimated edge does not clear break-even, so Kelly allocates no stake."
@@ -343,9 +358,13 @@ def build_live_experiment_view(state: ExperimentState, inputs: DashboardInputs) 
             sample_size=0, hits=0, bankroll=state.bankroll, result=None,
             running_frequency=np.array([], dtype=float),
             posterior_band=(np.array([], dtype=float), np.array([], dtype=float)),
-            e_values=np.array([], dtype=float), cusum_scores=np.array([], dtype=float),
+            e_values=np.array([], dtype=float),
+            log10_evidence=np.array([], dtype=float),
+            log10_threshold=float(-np.log(inputs.alpha) / np.log(10.0)),
+            cusum_scores=np.array([], dtype=float),
             posterior=posterior,
             evidence=EvidenceView(None, None, p0, p1, "CUSUM is waiting for observations."),
+            fairness=None,
             empty_message=empty,
         )
     running_frequency = np.cumsum(observations, dtype=float) / np.arange(1, observations.size + 1)
@@ -359,11 +378,25 @@ def build_live_experiment_view(state: ExperimentState, inputs: DashboardInputs) 
         p1=p1,
         no_alarm_message=None if cusum.first_alarm is not None else "No CUSUM alarm has crossed the declared threshold.",
     )
+    fair_wheel = make_fair_wheel(WheelKind(inputs.wheel_kind))
+    fairness = build_fairness_view(
+        SpinDataset(
+            spin_indices=tuple(range(1, len(state.history) + 1)),
+            spins=state.history,
+            wheel_kind=fair_wheel.kind,
+            wheel_labels=fair_wheel.labels,
+            wheel_probabilities=tuple(float(value) for value in fair_wheel.probabilities),
+        ),
+        inputs,
+    )
     return LiveExperimentView(
         sample_size=int(observations.size), hits=hits, bankroll=state.bankroll,
         result=state.history[-1], running_frequency=running_frequency,
         posterior_band=(lower, upper), e_values=evidence.e_values,
+        log10_evidence=evidence.log_likelihood_ratio / np.log(10.0),
+        log10_threshold=float(-np.log(inputs.alpha) / np.log(10.0)),
         cusum_scores=cusum.scores, posterior=posterior, evidence=evidence_view,
+        fairness=fairness,
         empty_message=None,
     )
 
@@ -380,12 +413,33 @@ def build_decision_risk_view(state: ExperimentState, inputs: DashboardInputs) ->
         table_limit=inputs.table_limit, stop_loss=inputs.stop_loss, take_profit=inputs.take_profit,
         custom_net_odds=inputs.custom_net_odds if inputs.odds_mode == "Custom hypothetical" else None,
     )
-    frontier = build_risk_frontier(config, wheel, bet, rule, [0.25, 0.5, 1.0], inputs.seed)
+    frontier = build_risk_frontier(
+        config,
+        wheel,
+        bet,
+        rule,
+        [0.25, 0.5, 1.0],
+        inputs.seed,
+        tail_probability=inputs.cvar_level,
+    )
     no_edge = (
         "The posterior does not put more than half its mass above break-even. Kelly outputs are shown as zero-stake evidence."
         if live.posterior.probability_positive_edge <= 0.5 else None
     )
-    return DecisionRiskView(live.posterior, frontier, build_bankroll_view(inputs), no_edge)
+    decision_probability = live.posterior.posterior_mean
+    decision_inputs = replace(
+        inputs,
+        strategy=StrategyKind.FULL_KELLY.value,
+        estimated_win_probability=decision_probability,
+    )
+    return DecisionRiskView(
+        live.posterior,
+        frontier,
+        build_bankroll_view(decision_inputs),
+        no_edge,
+        decision_probability,
+        inputs.cvar_level,
+    )
 
 
 def _scenario(inputs: DashboardInputs):

@@ -69,6 +69,23 @@ def test_risk_frontier_resets_the_identical_seed_for_each_fraction():
     )
 
 
+def test_risk_frontier_cvar_uses_requested_tail_probability():
+    base_config, wheel, bet, rule = _frontier_inputs()
+
+    narrow_tail = build_risk_frontier(
+        base_config, wheel, bet, rule, [1.0], seed=23, tail_probability=0.05
+    )
+    broad_tail = build_risk_frontier(
+        base_config, wheel, bet, rule, [1.0], seed=23, tail_probability=0.50
+    )
+
+    assert narrow_tail.loc[0, "cvar_tail_probability"] == pytest.approx(0.05)
+    assert broad_tail.loc[0, "cvar_tail_probability"] == pytest.approx(0.50)
+    assert narrow_tail.loc[0, "terminal_cvar_shortfall"] != pytest.approx(
+        broad_tail.loc[0, "terminal_cvar_shortfall"]
+    )
+
+
 @pytest.mark.parametrize("fractions", [[], [0.75], [0.25, 0.25]])
 def test_risk_frontier_rejects_unsupported_or_ambiguous_multipliers(fractions):
     base_config, wheel, bet, rule = _frontier_inputs()

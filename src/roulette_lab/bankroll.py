@@ -358,7 +358,9 @@ def simulate_bankroll(
     )
 
 
-def summarize_bankroll(simulation: BankrollSimulation) -> RiskSummary:
+def summarize_bankroll(
+    simulation: BankrollSimulation, tail_probability: float = 0.05
+) -> RiskSummary:
     """Summarize terminal outcomes, drawdowns, and non-negative shortfall CVaR."""
 
     if not isinstance(simulation, BankrollSimulation):
@@ -386,7 +388,9 @@ def summarize_bankroll(simulation: BankrollSimulation) -> RiskSummary:
         terminal_standard_deviation=float(np.std(terminal)),
         terminal_percentile_5=float(np.percentile(terminal, 5)),
         terminal_percentile_95=float(np.percentile(terminal, 95)),
-        terminal_cvar_shortfall=conditional_value_at_risk(terminal_shortfalls, 0.05),
+        terminal_cvar_shortfall=conditional_value_at_risk(
+            terminal_shortfalls, tail_probability
+        ),
         probability_of_loss=float(np.mean(terminal < simulation.config.initial_bankroll)),
         probability_of_ruin=float(np.mean(np.any(equity_paths <= 0.0, axis=1))),
         expected_maximum_drawdown=float(np.mean(maximum_drawdowns)),

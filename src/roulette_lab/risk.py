@@ -47,6 +47,7 @@ def build_risk_frontier(
     rule: SpecialRule,
     fractions: ArrayLike,
     seed: int,
+    tail_probability: float = 0.05,
 ) -> pd.DataFrame:
     """Compare quarter, half, and full Kelly with common random outcomes.
 
@@ -63,6 +64,7 @@ def build_risk_frontier(
         raise TypeError("bet must be a BetSpec.")
     rule = SpecialRule(rule)
     seed = _nonnegative_integer(seed, "seed")
+    tail_probability = _open_unit(tail_probability, "tail_probability")
     fractions = _validated_fractions(fractions)
     estimated_probability = _estimated_probability(base_config, wheel, bet)
 
@@ -76,7 +78,7 @@ def build_risk_frontier(
         simulation = simulate_bankroll(
             config, wheel, bet, rule, np.random.default_rng(seed)
         )
-        summary = summarize_bankroll(simulation)
+        summary = summarize_bankroll(simulation, tail_probability)
         terminal_equity = simulation.equity_paths[:, -1]
         shortfalls = np.maximum(config.initial_bankroll - terminal_equity, 0.0)
         with np.errstate(divide="ignore"):
@@ -92,7 +94,10 @@ def build_risk_frontier(
                 "probability_of_loss": summary.probability_of_loss,
                 "expected_maximum_drawdown": summary.expected_maximum_drawdown,
                 "expected_log_growth": expected_log_growth,
-                "terminal_cvar_shortfall": conditional_value_at_risk(shortfalls),
+                "terminal_cvar_shortfall": conditional_value_at_risk(
+                    shortfalls, tail_probability
+                ),
+                "cvar_tail_probability": tail_probability,
             }
         )
     return pd.DataFrame(rows)

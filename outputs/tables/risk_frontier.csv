@@ -1,4 +1,4 @@
-kelly_fraction_multiplier,strategy,terminal_mean,terminal_median,probability_of_loss,expected_maximum_drawdown,expected_log_growth,terminal_cvar_shortfall,scenario,assumed_win_probability,seed,paths,spins,common_random_numbers,expected_log_growth_convention
-0.25,quarter_kelly,2153.22366667,2187,0.0206666666667,0.242071792948,0.75166197082,148.286666667,17_probability_0.060,0.06,20261412,3000,300,True,mean_log_terminal_equity_ratio
-0.5,half_kelly,2095.09933333,2227,0.130666666667,0.323898529015,0.640320175736,505.16,17_probability_0.060,0.06,20261412,3000,300,True,mean_log_terminal_equity_ratio
-1,full_kelly,1924.96733333,2155,0.370666666667,0.38615764265,0.366748396343,510.093333333,17_probability_0.060,0.06,20261412,3000,300,True,mean_log_terminal_equity_ratio
+kelly_fraction_multiplier,strategy,terminal_mean,terminal_median,probability_of_loss,expected_maximum_drawdown,expected_log_growth,terminal_cvar_shortfall,cvar_tail_probability,scenario,assumed_win_probability,seed,paths,spins,common_random_numbers,expected_log_growth_convention
+0.25,quarter_kelly,2153.22366667,2187,0.0206666666667,0.242071792948,0.75166197082,148.286666667,0.05,17_probability_0.060,0.06,20261412,3000,300,True,mean_log_terminal_equity_ratio
+0.5,half_kelly,2095.09933333,2227,0.130666666667,0.323898529015,0.640320175736,505.16,0.05,17_probability_0.060,0.06,20261412,3000,300,True,mean_log_terminal_equity_ratio
+1,full_kelly,1924.96733333,2155,0.370666666667,0.38615764265,0.366748396343,510.093333333,0.05,17_probability_0.060,0.06,20261412,3000,300,True,mean_log_terminal_equity_ratio

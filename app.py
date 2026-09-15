@@ -19,19 +19,16 @@ os.environ.setdefault("MPLCONFIGDIR", str(ROOT / ".matplotlib"))
 os.environ.setdefault("MPLBACKEND", "Agg")
 sys.path.insert(0, str(ROOT / "src"))
 
-from roulette_lab.bankroll import StrategyKind  # noqa: E402
 from roulette_lab.bets import BetKind, SpecialRule, make_standard_bet  # noqa: E402
 from roulette_lab.dashboard import (  # noqa: E402
     DashboardInputs,
     DecisionRiskView,
     LiveExperimentView,
     build_decision_risk_view,
-    build_fairness_view,
     build_live_experiment_view,
     build_wheel_view,
 )
 from roulette_lab.experiment import advance_experiment, new_experiment, reset_experiment  # noqa: E402
-from roulette_lab.io import read_spin_csv  # noqa: E402
 from roulette_lab.roulette_component import colours_for_rotor, rotor_order_for_labels, roulette_wheel_html  # noqa: E402
 from roulette_lab.wheels import WheelKind, make_fair_wheel  # noqa: E402
 
@@ -153,20 +150,23 @@ def _scenario_inputs() -> DashboardInputs:
         target_probability = st.number_input("Declared alternative probability", min_value=0.01, max_value=0.99, value=0.60, step=0.01, format="%.2f")
         cusum_threshold = st.number_input("CUSUM threshold", min_value=0.1, value=3.0, step=0.1)
         prior_strength = st.number_input("Posterior prior strength", min_value=0.1, value=37.0, step=1.0)
+        cvar_level = st.select_slider(
+            "CVaR tail probability", options=[0.01, 0.025, 0.05, 0.10, 0.25], value=0.05
+        )
         seed = st.number_input("Random seed", min_value=0, value=20260912, step=1)
         with st.expander("Simulation controls"):
             paths = st.number_input("Simulation paths", min_value=20, max_value=10000, value=500, step=20)
             spins = st.number_input("Spins per path", min_value=1, max_value=5000, value=200, step=10)
-            strategy = st.selectbox("Reference strategy", [strategy.value for strategy in StrategyKind])
             odds_mode = st.radio("Odds", ["Casino standard", "Custom hypothetical"])
             custom_odds = st.number_input("Custom net odds", min_value=0.01, value=40.0, step=1.0) if odds_mode == "Custom hypothetical" else None
     return DashboardInputs(
         wheel_kind=wheel_kind.value, rule=rule, bet_kind=bet_kind.value, selection=selection,
         initial_bankroll=initial, base_stake=stake, live_stake=stake, stop_loss=stop_loss, take_profit=take_profit,
-        paths=int(paths), spins=int(spins), strategy=strategy, estimated_win_probability=None,
+        paths=int(paths), spins=int(spins), strategy="full_kelly", estimated_win_probability=None,
         bias_label="17", bias_probability=1 / len(wheel_labels), alpha=0.05, simulations=2000, seed=int(seed),
         odds_mode=odds_mode, custom_net_odds=custom_odds, target_probability=target_probability,
         cusum_threshold=cusum_threshold, posterior_prior_strength=prior_strength,
+        cvar_level=cvar_level,
     )
 
 
@@ -195,7 +195,14 @@ def _render_live(view: LiveExperimentView, inputs: DashboardInputs, state) -> No
             bet = make_standard_bet(BetKind(inputs.bet_kind), inputs.selection, wheel)
             st.session_state.experiment_state = advance_experiment(state, wheel, bet, SpecialRule(inputs.rule), inputs.live_stake, count)
             st.rerun()
-    history = pd.DataFrame({"spin": np.arange(1, view.sample_size + 1), "pocket": state.history})
+    selected = set(make_standard_bet(BetKind(inputs.bet_kind), inputs.selection, wheel).covered_labels)
+    history = pd.DataFrame(
+        {
+            "spin": np.arange(1, view.sample_size + 1),
+            "pocket": state.history,
+            "selected_bet_hit": [pocket in selected for pocket in state.history],
+        }
+    )
     controls[4].download_button("Download history", history.to_csv(index=False), "roulette_history.csv", "text/csv", width="stretch")
     if controls[5].button("Reset", width="stretch"):
         st.session_state.experiment_state = reset_experiment(state)
@@ -215,6 +222,13 @@ def _render_live(view: LiveExperimentView, inputs: DashboardInputs, state) -> No
     frequency.add_trace(go.Scatter(x=x, y=view.running_frequency, line={"color": CRIMSON, "width": 2.5}, name="Running frequency"))
     frequency.add_hline(y=view.evidence.p0, line_dash="dot", line_color=MUTED, annotation_text="fair probability")
     _plotly(frequency)
+    st.markdown('<h2 class="workspace-heading">Spin history</h2><p class="workspace-note">Newest observations appear first. The complete session remains available for sorting and inspection.</p>', unsafe_allow_html=True)
+    st.dataframe(
+        history.sort_values("spin", ascending=False),
+        width="stretch",
+        height=280,
+        hide_index=True,
+    )
 
 
 def _render_evidence(view: LiveExperimentView) -> None:
@@ -223,10 +237,10 @@ def _render_evidence(view: LiveExperimentView) -> None:
         st.info("Evidence paths appear after the first recorded spin.")
         return
     x = np.arange(1, view.sample_size + 1)
-    e_value = _figure("E-value path")
-    e_value.add_trace(go.Scatter(x=x, y=view.e_values, line={"color": CRIMSON, "width": 2.5}, name="E-value"))
-    e_value.add_hline(y=view.evidence.evidence.threshold, line_dash="dash", line_color=INK, annotation_text="Decision threshold")
-    e_value.update_yaxes(type="log", title="E-value")
+    e_value = _figure("Log10 evidence path")
+    e_value.add_trace(go.Scatter(x=x, y=view.log10_evidence, line={"color": CRIMSON, "width": 2.5}, name="log10 evidence"))
+    e_value.add_hline(y=view.log10_threshold, line_dash="dash", line_color=INK, annotation_text="log10 threshold")
+    e_value.update_yaxes(title="Log10 likelihood ratio")
     _plotly(e_value)
     cusum = _figure("CUSUM change diagnostic")
     cusum.add_trace(go.Scatter(x=x, y=view.cusum_scores, line={"color": INK, "width": 2.5}, name="CUSUM"))
@@ -237,10 +251,21 @@ def _render_evidence(view: LiveExperimentView) -> None:
     _plotly(cusum)
     if view.evidence.no_alarm_message:
         st.info(view.evidence.no_alarm_message)
+    fairness = view.fairness
+    st.markdown('<h2 class="workspace-heading">Global fairness and selection risk</h2><p class="workspace-note">The global test evaluates the full pocket distribution. Max-count corrections address a hottest-pocket claim selected after viewing the sample.</p>', unsafe_allow_html=True)
+    fairness_metrics = st.columns(4)
+    fairness_metrics[0].metric("Chi-square", f"{fairness.chi_square_statistic:.2f}")
+    fairness_metrics[1].metric("Asymptotic p", f"{fairness.asymptotic_p_value:.4f}")
+    fairness_metrics[2].metric("Monte Carlo global p", f"{fairness.monte_carlo_global_p_value:.4f}")
+    fairness_metrics[3].metric("Family-wise p", f"{fairness.familywise_p_value:.4f}")
+    st.markdown(f'<div class="rule-note">{fairness.selection_warning}</div>', unsafe_allow_html=True)
+    if fairness.sample_warning:
+        st.warning(fairness.sample_warning)
+    st.dataframe(fairness.counts, width="stretch", height=310, hide_index=True)
 
 
 def _render_risk(view: LiveExperimentView, state, inputs: DashboardInputs) -> None:
-    st.markdown('<h2 class="workspace-heading">Posterior decision and forward risk</h2><p class="workspace-note">Run the simulation when the selected assumptions are ready. Common random numbers keep the Kelly comparison focused on stake sizing.</p>', unsafe_allow_html=True)
+    st.markdown('<h2 class="workspace-heading">Posterior decision and forward risk</h2><p class="workspace-note">Plug-in simulations use the live posterior mean. Lower-quantile Kelly remains a separate conservative heuristic.</p>', unsafe_allow_html=True)
     posterior = view.posterior
     density_x = np.linspace(0.0001, min(0.9999, max(0.12, posterior.credible_interval[1] * 1.5)), 400)
     density = _figure("Posterior probability density")
@@ -264,11 +289,30 @@ def _render_risk(view: LiveExperimentView, state, inputs: DashboardInputs) -> No
         return
     if decision.no_edge_message:
         st.warning(decision.no_edge_message)
+    decision_metrics = st.columns(3)
+    decision_metrics[0].metric("Simulation probability", f"{decision.decision_probability:.3%}")
+    decision_metrics[1].metric("CVaR tail", f"{decision.cvar_level:.1%}")
+    decision_metrics[2].metric(
+        "Terminal CVaR shortfall", f"{decision.bankroll.risk.terminal_cvar_shortfall:,.2f}"
+    )
     frontier = _figure("Kelly risk frontier")
     frontier.add_trace(go.Scatter(x=decision.frontier["expected_maximum_drawdown"], y=decision.frontier["expected_log_growth"], mode="lines+markers+text", text=["Quarter Kelly", "Half Kelly", "Full Kelly"], textposition="top center", marker={"color": CRIMSON, "size": 10}, line={"color": INK}, name="Strategy"))
     frontier.update_xaxes(title="Expected maximum drawdown")
     frontier.update_yaxes(title="Expected log growth")
     _plotly(frontier)
+    st.dataframe(
+        decision.frontier[
+            [
+                "strategy",
+                "expected_log_growth",
+                "expected_maximum_drawdown",
+                "terminal_cvar_shortfall",
+                "cvar_tail_probability",
+            ]
+        ],
+        width="stretch",
+        hide_index=True,
+    )
     paths = decision.bankroll.equity_data
     horizon = np.arange(paths.shape[1])
     fan = _figure("Bankroll fan chart")
@@ -286,11 +330,15 @@ def _render_mechanics(inputs: DashboardInputs) -> None:
     wheel = make_fair_wheel(WheelKind(inputs.wheel_kind))
     rotor = rotor_order_for_labels(wheel.labels)
     _render_wheel_html(roulette_wheel_html(rotor, colours_for_rotor(rotor), None, 0, False))
-    metrics = st.columns(3)
+    metrics = st.columns(4)
     metrics[0].metric("Standard house edge", f"{100 * wheel_view.standard_house_edge:.2f}%")
     metrics[1].metric("Expected return per unit", f"{wheel_view.standard_expected_net_return:.4f}")
     metrics[2].metric("Standard payout", wheel_view.standard_payout_label.rsplit(" ", 1)[-1])
+    metrics[3].metric("Active simulation payout", wheel_view.simulation_payout_label.rsplit(" ", 1)[-1])
     st.markdown(f'<div class="rule-note">{wheel_view.scenario_notice}</div>', unsafe_allow_html=True)
+    st.markdown('<h2 class="workspace-heading">Table geometry</h2><p class="workspace-note">Zero pockets sit outside twelve rows of three numbered pockets. Rotor order and table position are intentionally different representations.</p>', unsafe_allow_html=True)
+    st.caption(f"Zero area: {' / '.join(wheel_view.zero_pockets)}")
+    st.dataframe(wheel_view.table_geometry, width="stretch", hide_index=True)
     distribution = _figure("Pocket probability model")
     palette = {"red": "#b62438", "black": "#22231f", "green": "#176046"}
     distribution.add_trace(go.Bar(x=wheel_view.probabilities["label"], y=wheel_view.probabilities["probability"], marker_color=[palette[colour] for colour in wheel_view.probabilities["colour"]], name="Pocket probability"))
@@ -300,27 +348,15 @@ def _render_mechanics(inputs: DashboardInputs) -> None:
 
 def _render_methods(inputs: DashboardInputs) -> None:
     st.markdown('<h2 class="workspace-heading">Methods and limits</h2><p class="workspace-note">This lab makes model assumptions inspectable. It does not establish a casino edge or offer wagering advice.</p>', unsafe_allow_html=True)
-    source = st.radio("Fairness data source", ["Biased example", "Unbiased example", "Upload CSV"], horizontal=True)
-    upload = st.file_uploader("Spin history CSV", type="csv") if source == "Upload CSV" else None
-    if source == "Upload CSV" and upload is None:
-        st.info("Upload a CSV with exactly two columns: spin,pocket.")
-    else:
-        path = ROOT / "data" / ("example_biased_spins.csv" if source == "Biased example" else "example_unbiased_spins.csv")
-        try:
-            dataset = read_spin_csv(upload.getvalue() if upload else path, make_fair_wheel(WheelKind(inputs.wheel_kind)))
-            fairness = build_fairness_view(dataset, inputs)
-        except (TypeError, ValueError) as error:
-            st.error(f"The data cannot be analysed: {error}")
-        else:
-            metrics = st.columns(3)
-            metrics[0].metric("Chi-square", f"{fairness.chi_square_statistic:.2f}")
-            metrics[1].metric("Monte Carlo global p", f"{fairness.monte_carlo_global_p_value:.4f}")
-            metrics[2].metric("Family-wise p", f"{fairness.familywise_p_value:.4f}")
-            st.markdown(f'<div class="rule-note">{fairness.selection_warning}</div>', unsafe_allow_html=True)
-            if fairness.sample_warning:
-                st.warning(fairness.sample_warning)
-            st.dataframe(fairness.counts, width="stretch", hide_index=True)
-    st.markdown('<div class="quiet-rule"></div><p class="workspace-note">Sequential statistics depend on the declared candidate probability. Posterior Kelly quantities are conditional sizing heuristics, not profit guarantees. Simulations are model-conditioned risk summaries.</p>', unsafe_allow_html=True)
+    with st.expander("Sequential evidence", expanded=True):
+        st.write("The likelihood ratio compares one declared null probability with one larger declared alternative. Log10 evidence is plotted directly so long negative paths remain finite and inspectable.")
+        st.write("CUSUM is a change diagnostic with a pre-specified threshold. It does not provide unrestricted sequential validity.")
+    with st.expander("Fairness and selection"):
+        st.write("Chi-square and Monte Carlo results evaluate the complete pocket distribution. Naive hottest-pocket results are shown with Bonferroni and simulated family-wise corrections because the pocket was selected after inspection.")
+    with st.expander("Posterior decision and risk"):
+        st.write(f"The Beta prior has strength {inputs.posterior_prior_strength:g}. Plug-in bankroll simulations use the posterior mean. The {inputs.conservative_quantile:.0%} posterior-quantile Kelly value is displayed only as a conservative sizing heuristic.")
+        st.write(f"CVaR reports the mean terminal shortfall inside the worst {inputs.cvar_level:.1%} of simulated paths. Results depend on the wheel, payout, table limits, stopping rules, and random seed.")
+    st.markdown('<div class="quiet-rule"></div><p class="workspace-note">No output predicts a future casino spin, proves a persistent physical bias, guarantees profit, or replaces independent validation data.</p>', unsafe_allow_html=True)
 
 
 try:
