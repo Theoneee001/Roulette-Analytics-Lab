@@ -33,7 +33,7 @@ The browser environment did not request reduced motion (`matchMedia('(prefers-re
 
 ## Online deployment status
 
-The configured Streamlit target is [roulette-analytics-lab.streamlit.app](https://roulette-analytics-lab.streamlit.app/). Public anonymous verification is intentionally **pending public-access verification** at this source-QA stage. Repository copy is updated to a verified public status only after the external check completes. No WebSocket warning or error was recorded during this Task 7 browser capture.
+The configured Streamlit target is [roulette-analytics-lab.streamlit.app](https://roulette-analytics-lab.streamlit.app/). Public anonymous verification remains **pending public-access verification**. The owner-facing Streamlit panel successfully woke and deployed the V2 app, displayed `Make this app public` as checked, and completed the deterministic live spin. However, a cookie-free `curl -L` request received HTTP `303` responses to `https://share.streamlit.io/-/auth/app` and `/-/login`, so it did not reach a public HTTP 200 response. This external Streamlit authentication boundary blocks a verified-public claim; repository copy remains pending. No WebSocket warning or error was recorded during this Task 7 browser capture.
 
 ## Accepted limitations
 

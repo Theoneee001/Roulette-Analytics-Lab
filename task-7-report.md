@@ -9,6 +9,14 @@
 - Screenshots: `docs/assets/dashboard-desktop.png`, `docs/assets/dashboard-mobile.png`, and `docs/assets/live-experiment.png`.
 - PDF QA: 14 A4 pages rebuilt and rendered at 144 DPI; contact sheet plus full-resolution pages 4, 5, 10, and 14 inspected without clipped glyphs, blank plots, orphan headings, or broken page numbering.
 
-## Pending External Release Evidence
+## Release and deployment evidence
 
-This report will be updated after the V2 archive commit, GitHub Actions result, anonymous Streamlit HTTP/public-access check, and final `HEAD == origin/main` comparison. At this point no public deployment claim has been made.
+- QA source commit: `73732c9da68cc7dbea0989980728fc65a50ebcb3` (`test: verify the v2 portfolio experience`).
+- V2 package release commit: `64794a5d270a0982f16c817af0f5508f46927a3c` (`release: package roulette analytics lab v2`).
+- V2 archive: `deliverables/Roulette_Analytics_Lab_V2.zip`, built by fallback `git archive` from `73732c9da68cc7dbea0989980728fc65a50ebcb3` with `deliverables` excluded. SHA-256: `8da7c802e263bdd44eb2e82b84e51e679520d0bbfde131aef3d601377a7dd967`. `unzip -t` completed with no errors. The existing V1 ZIP was preserved unchanged.
+- Push target: [origin/main](https://github.com/Theoneee001/Roulette-Analytics-Lab/tree/main). GitHub Actions [Reproducibility run 35457461402](https://github.com/Theoneee001/Roulette-Analytics-Lab/actions/runs/35457461402) completed successfully for `64794a5d270a0982f16c817af0f5508f46927a3c`.
+- Deployment: [roulette-analytics-lab.streamlit.app](https://roulette-analytics-lab.streamlit.app/) was woken and loaded the V2 dashboard in the available owner session. It showed `Make this app public` as checked, and the deployed single-spin control recorded one observation and settled the rotor on `8`.
+
+## Limitation
+
+Anonymous verification did not pass. A cookie-free request followed `303` redirects to `https://share.streamlit.io/-/auth/app` and the deployment's `/-/login` endpoint, never receiving a public HTTP 200 response. The owner-facing public setting was re-saved and remained checked, but the external authentication boundary persisted. README, checklist, and visual QA status therefore remain pending rather than claiming a public live dashboard.
