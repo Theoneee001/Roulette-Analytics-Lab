@@ -13,3 +13,19 @@ Integrity check: unzip -t passed with no errors.
 The manifest is intentionally outside the ZIP to avoid a circular checksum.
 The unapproved Group 40 source PDF, .git data, virtual environments, caches,
 and local worktree metadata are not included in the archive.
+
+
+Roulette Analytics Lab V2 Release Package
+=========================================
+
+Archive: Roulette_Analytics_Lab_V2.zip
+Source commit: 73732c9da68cc7dbea0989980728fc65a50ebcb3
+Archive SHA-256: 8da7c802e263bdd44eb2e82b84e51e679520d0bbfde131aef3d601377a7dd967
+Created: 2026-09-20 (Asia/Shanghai)
+
+Integrity check: unzip -t passed with no errors.
+The V2 ZIP was created with `git archive` from the exact source commit above
+and excludes `deliverables`, including the prior V1 archive and its manifest.
+The unapproved Group 40 source PDF, .git data, virtual environments, caches,
+and local worktree metadata are excluded. This external manifest remains
+outside the V2 ZIP so its checksum is not circular.
