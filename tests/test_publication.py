@@ -174,7 +174,7 @@ def test_readme_contains_manual_requirements():
         assert f"## {heading}" in readme
 
 
-def test_deployment_target_is_linked_but_not_claimed_public_before_task_seven():
+def test_canonical_deployment_is_linked_and_verified_public():
     live_url = "https://roulette-analytics-lab.streamlit.app/"
     for relative in [
         "README.md",
@@ -184,29 +184,14 @@ def test_deployment_target_is_linked_but_not_claimed_public_before_task_seven():
     ]:
         text = (ROOT / relative).read_text(encoding="utf-8")
         assert live_url in text, f"Missing deployment target URL in {relative}"
-        assert "pending public-access verification" in text.lower(), relative
-
-    combined = "\n".join(
-        (ROOT / relative).read_text(encoding="utf-8")
-        for relative in [
-            "README.md",
-            "docs/application_materials.md",
-            "docs/deliverables_checklist.md",
-            "docs/visual_qa.md",
-        ]
-    )
-    for false_claim in [
-        "Open the live Streamlit dashboard",
-        "The public dashboard is available",
-        "Live interactive dashboard",
-        "Public Streamlit URL",
-        "sharing settings identify the app as public and searchable",
-    ]:
-        assert false_claim.lower() not in combined.lower()
+        assert "verified public" in text.lower(), relative
+        assert "fresh anonymous cookie jar" in text.lower(), relative
+        assert "http 200" in text.lower(), relative
+        assert "pending public-access verification" not in text.lower(), relative
 
     checklist = (ROOT / "docs/deliverables_checklist.md").read_text(encoding="utf-8")
     assert "| Online demonstration |" in checklist
-    assert "Task 7 release checklist item" in checklist
+    assert "Verified public deployment" in checklist
 
 
 def test_provenance_credits_every_author_and_records_source_checksum():

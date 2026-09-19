@@ -24,7 +24,7 @@ Existing seven tables and six figures remain. The final release contains eleven 
 | Responsible framing | [dashboard copy](../app.py) | [publication tests](../tests/test_publication.py) | [methods output](../outputs/tables/posterior_edge.csv) | [limitations](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
 | AI workflow | [workflow record](ai_workflow.md) | [publication tests](../tests/test_publication.py) | [review evidence](ai_workflow.md) | [provenance](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
 | Application value | [application materials](application_materials.md) | [publication tests](../tests/test_publication.py) | [portfolio evidence](application_materials.md) | [application value](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
-| Online demonstration | [deployment configuration](../.streamlit) | [app tests](../tests/test_app.py) | [QA screenshots](assets) | [software design](../report/technical_report.pdf) | [Streamlit target](https://roulette-analytics-lab.streamlit.app/) | Task 7 release checklist item; pending public-access verification |
+| Online demonstration | [deployment configuration](../.streamlit) | [publication test](../tests/test_publication.py) | [QA screenshots](assets) | [software design](../report/technical_report.pdf) | [verified public deployment](https://roulette-analytics-lab.streamlit.app/) | Verified public deployment: fresh anonymous cookie jar retained server-issued session and CSRF cookies, received HTTP 200, and kept the canonical URL |
 
 ## Release gate
 

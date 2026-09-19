@@ -17,6 +17,9 @@
 - Push target: [origin/main](https://github.com/Theoneee001/Roulette-Analytics-Lab/tree/main). GitHub Actions [Reproducibility run 35457461402](https://github.com/Theoneee001/Roulette-Analytics-Lab/actions/runs/35457461402) completed successfully for `64794a5d270a0982f16c817af0f5508f46927a3c`.
 - Deployment: [roulette-analytics-lab.streamlit.app](https://roulette-analytics-lab.streamlit.app/) was woken and loaded the V2 dashboard in the available owner session. It showed `Make this app public` as checked, and the deployed single-spin control recorded one observation and settled the rotor on `8`.
 
-## Limitation
+## Public deployment verification
 
-Anonymous verification did not pass. A cookie-free request followed `303` redirects to `https://share.streamlit.io/-/auth/app` and the deployment's `/-/login` endpoint, never receiving a public HTTP 200 response. The owner-facing public setting was re-saved and remained checked, but the external authentication boundary persisted. README, checklist, and visual QA status therefore remain pending rather than claiming a public live dashboard.
+- Canonical URL: [roulette-analytics-lab.streamlit.app](https://roulette-analytics-lab.streamlit.app/).
+- Fresh anonymous-browser check: `curl -sSL --max-redirs 20 -c <fresh-jar> -b <fresh-jar> https://roulette-analytics-lab.streamlit.app/` returned HTTP 200, kept the canonical final URL, and received a 9,782-byte Streamlit shell.
+- The jar began empty and retained only server-issued anonymous `streamlit_session` and `_streamlit_csrf` cookies across redirects. The earlier no-jar loop incorrectly discarded those cookies at every redirect, so it did not model a browser session.
+- The in-app browser loaded the full five-tab V2 dashboard. The diagnostic replacement app and remote deployment branch remain an undocumented fallback; canonical documentation continues to use the original roulette URL.

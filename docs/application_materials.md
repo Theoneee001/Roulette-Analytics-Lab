@@ -1,6 +1,6 @@
 # Application Materials
 
-**Portfolio evidence:** [GitHub repository](https://github.com/Theoneee001/Roulette-Analytics-Lab) | [Streamlit deployment target](https://roulette-analytics-lab.streamlit.app/), pending public-access verification in Task 7
+**Portfolio evidence:** [GitHub repository](https://github.com/Theoneee001/Roulette-Analytics-Lab) | [verified public Streamlit deployment](https://roulette-analytics-lab.streamlit.app/), confirmed with a fresh anonymous cookie jar that retained server-issued session and CSRF cookies and received HTTP 200 at the canonical URL
 
 ## CV Bullets
 

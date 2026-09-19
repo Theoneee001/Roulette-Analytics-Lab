@@ -2,7 +2,7 @@
 
 **Optimal Betting Strategy Simulator: A Statistical Laboratory for Roulette Bias, Bankroll Risk and Decision-Making**
 
-[Streamlit deployment target, pending public-access verification in Task 7](https://roulette-analytics-lab.streamlit.app/)
+[Verified public Streamlit dashboard](https://roulette-analytics-lab.streamlit.app/)
 
 Roulette Analytics Lab is a reproducible Python portfolio project built from the mathematical questions studied in the University of Manchester MATH20062 Group 40 report. It turns a static academic investigation into a tested package, a deterministic analysis pipeline, an executed notebook, a CSV-backed PDF report, and a Streamlit dashboard. It asks how casino roulette rules determine expected value, what fixed-horizon evidence says about fairness, and how selection, repeated observation, changing probabilities, and uncertainty affect a decision.
 
@@ -115,7 +115,7 @@ The screenshots below were generated from the tested V1 interface. The full inte
 
 ![Roulette Analytics Lab mobile dashboard](docs/assets/dashboard-mobile.png)
 
-Existing seven tables and six figures remain. The final release contains eleven tables and ten figures. These include deterministic sequential-evidence, change-point, posterior-edge, and risk-frontier outputs in [outputs](outputs). The intended Streamlit deployment target is [roulette-analytics-lab.streamlit.app](https://roulette-analytics-lab.streamlit.app/), but public access is pending public-access verification in Task 7. The local launch command above runs the app from source.
+Existing seven tables and six figures remain. The final release contains eleven tables and ten figures. These include deterministic sequential-evidence, change-point, posterior-edge, and risk-frontier outputs in [outputs](outputs). The canonical [verified public deployment](https://roulette-analytics-lab.streamlit.app/) returned HTTP 200 at its unchanged URL when a fresh anonymous cookie jar retained the server-issued Streamlit session and CSRF cookies across redirects. The local launch command above runs the app from source.
 
 ## Reproducibility
 

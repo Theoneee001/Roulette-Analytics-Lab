@@ -396,21 +396,15 @@ def _verify_public_text(root: Path, tables: dict[str, pd.DataFrame]) -> None:
     for text in deployment_documents:
         _require(deployment_url in text, "Deployment target URL is missing")
         _require(
-            "pending public-access verification" in text.lower(),
-            "Unverified deployment status is not labelled pending",
+            "verified public" in text.lower(),
+            "Verified deployment status is not labelled public",
         )
-    forbidden_public_claims = (
-        "open the live streamlit dashboard",
-        "the public dashboard is available",
-        "live interactive dashboard",
-        "public streamlit url",
-        "sharing settings identify the app as public and searchable",
-    )
-    combined = "\n".join(deployment_documents).lower()
-    _require(
-        not any(claim in combined for claim in forbidden_public_claims),
-        "Unverified public deployment status is overstated",
-    )
+        _require("fresh anonymous cookie jar" in text.lower(), "Anonymous cookie-jar evidence is missing")
+        _require("http 200" in text.lower(), "Verified deployment must record HTTP 200")
+        _require(
+            "pending public-access verification" not in text.lower(),
+            "Verified deployment status still claims it is pending",
+        )
 
 
 def _verify_notebook(root: Path) -> None:
