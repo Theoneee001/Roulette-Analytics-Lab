@@ -15,7 +15,7 @@
 - QA source commit: `73732c9da68cc7dbea0989980728fc65a50ebcb3` (`test: verify the v2 portfolio experience`).
 - V2 package release commit: `64794a5d270a0982f16c817af0f5508f46927a3c` (`release: package roulette analytics lab v2`).
 - V2 archive: `deliverables/Roulette_Analytics_Lab_V2.zip`, rebuilt by fallback `git archive` from final source commit `a502289f52f27673f7174737da2db1bac459726b` with `deliverables` excluded. SHA-256: `d7bacd5b5c73ab34778f7abfd5f49e37ab714ac7d59b8a45225f87dc4afb26f8`. `unzip -t` completed with no errors. The existing V1 ZIP was preserved unchanged.
-- Push target: [origin/main](https://github.com/Theoneee001/Roulette-Analytics-Lab/tree/main). GitHub Actions [Reproducibility run 35457461402](https://github.com/Theoneee001/Roulette-Analytics-Lab/actions/runs/35457461402) completed successfully for `64794a5d270a0982f16c817af0f5508f46927a3c`.
+- Final package push: [origin/main](https://github.com/Theoneee001/Roulette-Analytics-Lab/tree/main) at `cde79ddf114a79e0101e38bfe274f65aa08feeee` (`release: package verified public v2`). GitHub Actions [Reproducibility run 35458914740](https://github.com/Theoneee001/Roulette-Analytics-Lab/actions/runs/35458914740) completed successfully for that release commit.
 - Deployment: [roulette-analytics-lab.streamlit.app](https://roulette-analytics-lab.streamlit.app/) was woken and loaded the V2 dashboard in the available owner session. It showed `Make this app public` as checked, and the deployed single-spin control recorded one observation and settled the rotor on `8`.
 
 ## Public deployment verification
