@@ -335,12 +335,13 @@ def test_release_visual_evidence_has_expected_dimensions_and_scope():
 
     record = (ROOT / "docs" / "visual_qa.md").read_text(encoding="utf-8")
     for phrase in [
-        "Wheel & Bets",
-        "Fairness Lab",
-        "Bankroll Simulator",
-        "Methods & Limits",
+        "Live Experiment",
+        "Evidence",
+        "Decision Risk",
+        "Wheel Mechanics",
+        "Methods",
         "390x844",
         "14 pages",
-        "WebSocket",
+        "console",
     ]:
         assert phrase in record

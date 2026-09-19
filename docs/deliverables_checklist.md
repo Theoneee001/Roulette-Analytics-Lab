@@ -1,30 +1,31 @@
 # Project 1 Deliverables Checklist
 
-This checklist maps the execution manual's Project 1 expectations to repository evidence.
+This manual matrix is limited to **Project 1: Roulette Analytics Lab**. Later portfolio projects are explicitly out of scope for this release and do not supply evidence for any row below.
 
-| Requirement | Deliverable | Concrete evidence | Status |
-| --- | --- | --- | --- |
-| Python reimplementation | Tested package and scripts | [`src/roulette_lab`](../src/roulette_lab), [`scripts`](../scripts), [`tests`](../tests) | Complete |
-| Source and personal contribution boundary | Independent implementation from the mathematical specification | [`provenance.md`](provenance.md) | Complete |
-| Kelly Criterion | Conditional full, half, and quarter Kelly | [`bets.py`](../src/roulette_lab/bets.py), [`bankroll.py`](../src/roulette_lab/bankroll.py), [`app.py`](../app.py) | Complete |
-| Chi-squared testing | Asymptotic and Monte Carlo global tests | [`statistics.py`](../src/roulette_lab/statistics.py), [`roulette_analytics.ipynb`](../notebooks/roulette_analytics.ipynb) | Complete |
-| Selection correction | Naive, Bonferroni, and maximum-count family-wise results | [`bias_tests.csv`](../outputs/tables/bias_tests.csv), [`technical_blog.md`](technical_blog.md) | Complete |
-| Random walk simulation | Running frequency and bankroll paths | [`03_lln_convergence.png`](../outputs/figures/03_lln_convergence.png), [`06_bankroll_risk.png`](../outputs/figures/06_bankroll_risk.png) | Complete |
-| Adjustable dashboard controls | Bankroll, odds, stop-loss, take-profit, paths, spins, seed, and strategy | [`app.py`](../app.py), [`dashboard.py`](../src/roulette_lab/dashboard.py) | Complete |
-| Real-time curves | Probability, residual, and bankroll charts | [`dashboard-desktop.png`](assets/dashboard-desktop.png), [`visual_qa.md`](visual_qa.md) | Complete |
-| Responsive design | Desktop and 390x844 evidence | [`dashboard-desktop.png`](assets/dashboard-desktop.png), [`dashboard-mobile.png`](assets/dashboard-mobile.png) | Complete |
-| Technical blog | Mathematics, implementation, results, and limits | [`technical_blog.md`](technical_blog.md) | Complete |
-| Full technical report | 4,500-5,000 prose words and 13-16 page A4 PDF | [`technical_report.md`](../report/technical_report.md), [`technical_report.pdf`](../report/technical_report.pdf) | Complete |
-| GitHub-ready repository | README, licence, lock file, commands, CI | [`README.md`](../README.md), [`LICENSE`](../LICENSE), [`requirements-lock.txt`](../requirements-lock.txt), [`reproducibility.yml`](../.github/workflows/reproducibility.yml) | Complete |
-| Code reproducibility | Fixed seeds and permanent cross-artifact checks | [`run_analysis.py`](../scripts/run_analysis.py), [`verify_artifacts.py`](../scripts/verify_artifacts.py) | Complete |
-| Data | Fair and biased teaching datasets with strict schema | [`example_unbiased_spins.csv`](../data/example_unbiased_spins.csv), [`example_biased_spins.csv`](../data/example_biased_spins.csv), [`README`](../data/README.md) | Complete |
-| Machine-readable results | Existing seven tables and six figures remain. The final release contains eleven tables and ten figures. | [`outputs/tables`](../outputs/tables), [`outputs/figures`](../outputs/figures) | Complete |
-| Correct interpretation | Negative expectation, post-selection bias, and probability uncertainty | [`technical_report.md`](../report/technical_report.md), [`technical_blog.md`](technical_blog.md) | Complete |
-| AI capability evidence | Assisted workflow plus verification boundary | [`ai_workflow.md`](ai_workflow.md) | Complete |
-| Application value | CV, PS, interview, contribution, and programme maps | [`application_materials.md`](application_materials.md) | Complete |
-| Responsible framing | No profit promise and explicit limitations | [`README.md`](../README.md), [`technical_report.md`](../report/technical_report.md), [`app.py`](../app.py) | Complete |
-| Online demonstration | Task 7 release checklist item | [Streamlit deployment target](https://roulette-analytics-lab.streamlit.app/) | Pending public-access verification |
+Existing seven tables and six figures remain. The final release contains eleven tables and ten figures.
+
+| Requirement | Code | Test | Output | Report | Dashboard | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| Python reimplementation | [package](../src/roulette_lab) | [test suite](../tests) | [tables](../outputs/tables) | [research report](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
+| Contribution boundary | [provenance](provenance.md) | [publication test](../tests/test_publication.py) | [provenance checksum](provenance.md) | [research question](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
+| Kelly Criterion | [bets](../src/roulette_lab/bets.py) | [bet tests](../tests/test_bets.py) | [kelly sensitivity](../outputs/tables/kelly_sensitivity.csv) | [posterior decisions](../report/technical_report.pdf) | [Decision Risk](../app.py) | Complete |
+| Chi-squared testing | [statistics](../src/roulette_lab/statistics.py) | [statistics tests](../tests/test_statistics.py) | [bias tests](../outputs/tables/bias_tests.csv) | [fixed-horizon inference](../report/technical_report.pdf) | [Evidence](../app.py) | Complete |
+| Selection correction | [dashboard](../src/roulette_lab/dashboard.py) | [dashboard tests](../tests/test_dashboard.py) | [bias tests](../outputs/tables/bias_tests.csv) | [selection correction](../report/technical_report.pdf) | [Evidence](../app.py) | Complete |
+| Random-walk and LLN simulation | [simulation](../src/roulette_lab/simulation.py) | [simulation tests](../tests/test_simulation.py) | [LLN figure](../outputs/figures/03_lln_convergence.png) | [probability contract](../report/technical_report.pdf) | [Live Experiment](../app.py) | Complete |
+| Sequential evidence and CUSUM | [sequential](../src/roulette_lab/sequential.py) | [sequential tests](../tests/test_sequential.py) | [sequential evidence](../outputs/tables/sequential_evidence.csv) | [sequential evidence](../report/technical_report.pdf) | [Evidence](../app.py) | Complete |
+| Posterior decision and CVaR | [decision](../src/roulette_lab/decision.py) | [decision tests](../tests/test_decision.py) | [posterior edge](../outputs/tables/posterior_edge.csv) | [posterior decisions](../report/technical_report.pdf) | [Decision Risk](../app.py) | Complete |
+| Adjustable controls | [app controls](../app.py) | [app tests](../tests/test_app.py) | [risk frontier](../outputs/tables/risk_frontier.csv) | [software design](../report/technical_report.pdf) | [live controls](assets/live-experiment.png) | Complete |
+| Live experiment and wheel | [experiment](../src/roulette_lab/experiment.py) | [component tests](../tests/test_roulette_component.py) | [history CSV](../data/example_unbiased_spins.csv) | [software design](../report/technical_report.pdf) | [settled wheel](assets/live-experiment.png) | Complete |
+| Real-time charts and downloads | [dashboard figures](../app.py) | [dashboard tests](../tests/test_dashboard.py) | [figures](../outputs/figures) | [risk frontier](../report/technical_report.pdf) | [desktop QA](assets/dashboard-desktop.png) | Complete |
+| Responsive design | [responsive CSS](../app.py) | [app tests](../tests/test_app.py) | [mobile capture](assets/dashboard-mobile.png) | [software design](../report/technical_report.pdf) | [visual QA](visual_qa.md) | Complete |
+| Teaching data | [strict CSV IO](../src/roulette_lab/io.py) | [IO tests](../tests/test_io_and_power.py) | [fair CSV](../data/example_unbiased_spins.csv) | [experimental design](../report/technical_report.pdf) | [CSV import](app.py) | Complete |
+| Notebook and report | [builders](../scripts) | [publication tests](../tests/test_publication.py) | [notebook](../notebooks/roulette_analytics.ipynb) | [PDF](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
+| Reproducibility | [analysis runner](../scripts/run_analysis.py) | [artifact verifier](../scripts/verify_artifacts.py) | [all outputs](../outputs) | [methods](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
+| Responsible framing | [dashboard copy](../app.py) | [publication tests](../tests/test_publication.py) | [methods output](../outputs/tables/posterior_edge.csv) | [limitations](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
+| AI workflow | [workflow record](ai_workflow.md) | [publication tests](../tests/test_publication.py) | [review evidence](ai_workflow.md) | [provenance](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
+| Application value | [application materials](application_materials.md) | [publication tests](../tests/test_publication.py) | [portfolio evidence](application_materials.md) | [application value](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
+| Online demonstration | [deployment configuration](../.streamlit) | [app tests](../tests/test_app.py) | [QA screenshots](assets) | [software design](../report/technical_report.pdf) | [Streamlit target](https://roulette-analytics-lab.streamlit.app/) | Task 7 release checklist item; pending public-access verification |
 
 ## Release gate
 
-The release is ready only when all automated tests pass, the notebook executes, publication outputs regenerate without drift, the PDF renders cleanly, desktop and mobile dashboard views are checked, the public dashboard is reachable, and the final ZIP passes `unzip -t`. The external manifest records the archive checksum without creating a circular checksum inside the ZIP. The online demonstration remains pending public-access verification in Task 7 and is therefore still a release checklist item.
+Task 7 requires a clean deterministic rebuild, rendered PDF inspection, exact desktop and mobile captures, an anonymous public deployment check, and a `unzip -t` validated V2 archive. The external manifest remains outside the archive so its checksum is not circular.
