@@ -1,0 +1,25 @@
+Roulette Analytics Lab V3 Release Package
+=========================================
+
+Archive: Roulette_Analytics_Lab_V3.zip
+Source commit: 770a2129a9a95faee22d77f59870931aea26c5ea
+Archive SHA-256: 2bfdbb3f8c3354e7ee2033b7e1e994d573dfea835212df6287e3290062310f5f
+Created: 2026-09-20 (Asia/Shanghai)
+
+English report SHA-256:
+0947b219424758276dbb4623594f4b1fb497197d477f8b94cf2e637d9aac6779
+
+Chinese report SHA-256:
+1d8b2d4c1339fbfcf928d792a9151021afb08887f9f4108cdaaebaafc3ef410a
+
+Integrity check: unzip -t passed with no errors.
+The archive contains 116 paths from the exact source commit above, including
+the English and Chinese Markdown reports, both generated PDFs, and the
+cross-platform Chinese report builder. Both reports omit the former
+application-value section; separate admissions material remains under docs.
+
+The V3 ZIP was created with `git archive` and excludes `deliverables`, so it
+does not contain this manifest or the preserved V1 and V2 archives. The
+unapproved Group 40 source PDF, .git data, virtual environments, caches, local
+rendering files, and worktree metadata are also excluded. This manifest stays
+outside the ZIP so the archive checksum is not circular.
