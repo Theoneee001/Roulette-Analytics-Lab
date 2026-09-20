@@ -1,5 +1,9 @@
 # Task 6 Publication Report
 
+## V3 Amendment, 20 September 2026
+
+The current release removes the `Application Value` section from the English technical report and the matching `申请价值` section from the Chinese translation. Admissions-oriented material remains only in `docs/application_materials.md`, outside the technical report. The updated English report contains 4,673 prose words and 13 A4 pages; the matching Chinese report contains 12 A4 pages. The V2 counts and visual-review notes below are retained as historical evidence of the earlier release and are superseded by `docs/visual_qa.md` for V3.
+
 ## Scope Completed
 
 Task 6 now publishes the V2 research narrative: an executed notebook, a CSV-backed technical report and PDF, a technical blog, an expanded methodology map, AI-use documentation, admissions material, and a README that explains reproducibility and responsible use. Publication tests were tightened before the rewrite and observed failing before implementation.

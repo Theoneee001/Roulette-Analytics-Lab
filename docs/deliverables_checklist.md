@@ -23,9 +23,9 @@ Existing seven tables and six figures remain. The final release contains eleven 
 | Reproducibility | [analysis runner](../scripts/run_analysis.py) | [artifact verifier](../scripts/verify_artifacts.py) | [all outputs](../outputs) | [methods](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
 | Responsible framing | [dashboard copy](../app.py) | [publication tests](../tests/test_publication.py) | [methods output](../outputs/tables/posterior_edge.csv) | [limitations](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
 | AI workflow | [workflow record](ai_workflow.md) | [publication tests](../tests/test_publication.py) | [review evidence](ai_workflow.md) | [provenance](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
-| Application value | [application materials](application_materials.md) | [publication tests](../tests/test_publication.py) | [portfolio evidence](application_materials.md) | [application value](../report/technical_report.pdf) | [Methods](../app.py) | Complete |
+| Application materials | [application materials](application_materials.md) | [publication tests](../tests/test_publication.py) | [portfolio evidence](application_materials.md) | Separate from technical report | [Methods](../app.py) | Complete |
 | Online demonstration | [deployment configuration](../.streamlit) | [publication test](../tests/test_publication.py) | [QA screenshots](assets) | [software design](../report/technical_report.pdf) | [verified public deployment](https://roulette-analytics-lab.streamlit.app/) | Verified public deployment: fresh anonymous cookie jar retained server-issued session and CSRF cookies, received HTTP 200, and kept the canonical URL |
 
 ## Release gate
 
-Task 7 requires a clean deterministic rebuild, rendered PDF inspection, exact desktop and mobile captures, an anonymous public deployment check, and a `unzip -t` validated V2 archive. The external manifest remains outside the archive so its checksum is not circular.
+Task 7 requires a clean deterministic rebuild, rendered PDF inspection, exact desktop and mobile captures, an anonymous public deployment check, and a `unzip -t` validated V3 archive. The V3 release contains both English and Chinese reports. The external manifest remains outside the archive so its checksum is not circular.

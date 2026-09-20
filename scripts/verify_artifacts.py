@@ -347,6 +347,9 @@ def _verify_numeric_table_values(tables: dict[str, pd.DataFrame]) -> None:
 def _verify_public_text(root: Path, tables: dict[str, pd.DataFrame]) -> None:
     readme = _read(root / "README.md", "README")
     report = _read(root / "report" / "technical_report.md", "technical report")
+    chinese_report = _read(
+        root / "report" / "technical_report_zh-CN.md", "Chinese technical report"
+    )
     blog = _read(root / "docs" / "technical_blog.md", "technical blog")
     application = _read(root / "docs" / "application_materials.md", "application materials")
     _read(root / "docs" / "provenance.md", "provenance record")
@@ -355,6 +358,11 @@ def _verify_public_text(root: Path, tables: dict[str, pd.DataFrame]) -> None:
     checklist = _read(root / "docs" / "deliverables_checklist.md", "deliverables checklist")
     visual_qa = _read(root / "docs" / "visual_qa.md", "visual QA record")
     task_report = _read(root / "task-7-report.md", "Task 7 release report")
+
+    _require(
+        "## Application Value" not in report and "## 申请价值" not in chinese_report,
+        "Technical reports contain the removed application-value section",
+    )
 
     report_words = _count_report_prose(report)
     _require(4_500 <= report_words <= 5_000, f"Technical report word count is {report_words}")
@@ -411,7 +419,7 @@ def _verify_public_text(root: Path, tables: dict[str, pd.DataFrame]) -> None:
     )
     _require("tested V2 interface" in readme, "README screenshots are not labelled V2")
 
-    release_manifest = "deliverables/V1_MANIFEST.txt"
+    release_manifest = "deliverables/V3_MANIFEST.txt"
     _require(release_manifest in task_report, "Task 7 report does not defer to the external manifest")
     _require("adjacent to the ZIP" in task_report, "Task 7 report does not locate the external manifest")
     _require("cannot self-reference" in task_report, "Task 7 report lacks its self-reference explanation")
@@ -504,11 +512,26 @@ def _verify_figures_and_pdf(root: Path) -> None:
     pdf = root / "report" / "technical_report.pdf"
     _require(pdf.is_file() and pdf.stat().st_size > 50_000, "Missing or undersized report PDF")
     reader = PdfReader(pdf)
-    _require(13 <= len(reader.pages) <= 16, f"Report PDF has {len(reader.pages)} pages")
+    _require(len(reader.pages) == 13, f"Report PDF has {len(reader.pages)} pages")
     _require(
         "Probability Contract" in reader.pages[3].extract_text(),
         "Probability Contract is missing from PDF page 4",
     )
+    report_text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    _require("Application Value" not in report_text, "Report PDF contains the removed section")
+
+    chinese_pdf = root / "report" / "technical_report_zh-CN.pdf"
+    _require(
+        chinese_pdf.is_file() and chinese_pdf.stat().st_size > 50_000,
+        "Missing or undersized Chinese technical report PDF",
+    )
+    chinese_reader = PdfReader(chinese_pdf)
+    _require(
+        len(chinese_reader.pages) == 12,
+        f"Chinese technical report PDF has {len(chinese_reader.pages)} pages",
+    )
+    chinese_text = "\n".join(page.extract_text() or "" for page in chinese_reader.pages)
+    _require("申请价值" not in chinese_text, "Chinese PDF contains the removed section")
 
 
 def verify_artifacts(root: Path) -> None:

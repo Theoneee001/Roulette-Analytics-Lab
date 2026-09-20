@@ -12,6 +12,7 @@ from scripts.build_report_pdf import (
     markdown_story,
     resolve_csv_markers,
 )
+from scripts import build_report_pdf_zh
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,7 +51,7 @@ def test_report_prose_word_count_is_in_v2_range():
     assert 4_500 <= count_report_prose(ROOT / "report/technical_report.md") <= 5_000
 
 
-def test_report_has_v2_research_sections_in_order():
+def test_report_omits_application_value_and_keeps_research_sections_in_order():
     text = (ROOT / "report/technical_report.md").read_text(encoding="utf-8")
     headings = [
         "Executive Summary",
@@ -62,13 +63,21 @@ def test_report_has_v2_research_sections_in_order():
         "Posterior Decisions",
         "Risk Frontier",
         "Software and Product Design",
-        "Application Value",
         "Limitations",
         "Conclusion",
         "References",
     ]
     positions = [text.index(f"## {heading}") for heading in headings]
     assert positions == sorted(positions)
+    assert "## Application Value" not in text
+
+    chinese = (ROOT / "report/technical_report_zh-CN.md").read_text(encoding="utf-8")
+    assert "## 申请价值" not in chinese
+
+
+def test_chinese_report_builder_has_a_portable_font_fallback(monkeypatch, tmp_path):
+    monkeypatch.setattr(build_report_pdf_zh, "FONT_PATH", tmp_path / "missing.ttf")
+    assert build_report_pdf_zh._register_fonts() == "STSong-Light"
 
 
 def test_report_headline_evidence_names_generated_csv_tables():
@@ -196,11 +205,12 @@ def test_canonical_deployment_is_linked_and_verified_public():
 
 def test_task_seven_report_defers_post_source_archive_facts_to_manifest():
     report = (ROOT / "task-7-report.md").read_text(encoding="utf-8")
-    assert "deliverables/V1_MANIFEST.txt" in report
+    assert "deliverables/V3_MANIFEST.txt" in report
     assert "adjacent to the ZIP" in report
     assert "cannot self-reference" in report
     assert "source commit, archive SHA-256, and `unzip -t` result" in report
-    assert "334 passed tests" in report
+    assert "337 passed tests" in report
+    assert "V3 archive" in report
     assert not re.search(r"\b[0-9a-f]{40}\b", report)
     assert not re.search(r"\b[0-9a-f]{64}\b", report)
     assert "actions/runs/" not in report
@@ -243,6 +253,9 @@ def test_every_local_deliverables_matrix_link_exists():
         "../src/roulette_lab/bankroll.py",
         "../tests/test_analysis.py",
         "../tests/test_bankroll.py",
+        "Application materials",
+        "Separate from technical report",
+        "V3 archive",
     ):
         assert expected in checklist
     for target in re.findall(r"\[[^]]+\]\(([^)]+)\)", checklist):
@@ -384,7 +397,7 @@ def test_release_visual_evidence_has_expected_dimensions_and_scope():
         "Wheel Mechanics",
         "Methods",
         "390x844",
-        "14 pages",
+        "13 pages",
         "console",
     ]:
         assert phrase in record

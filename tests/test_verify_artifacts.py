@@ -67,6 +67,26 @@ def test_verifier_rejects_missing_manual_evidence(tmp_path):
         verify_artifacts(copied)
 
 
+def test_verifier_requires_the_chinese_report_pdf(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    (copied / "report/technical_report_zh-CN.pdf").unlink()
+
+    with pytest.raises(VerificationError, match="Chinese technical report"):
+        verify_artifacts(copied)
+
+
+def test_verifier_rejects_removed_application_value_section_in_chinese_source(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    report = copied / "report/technical_report_zh-CN.md"
+    report.write_text(
+        report.read_text(encoding="utf-8") + "\n## 申请价值\n\n不应出现在技术报告中。\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(VerificationError, match="removed application-value"):
+        verify_artifacts(copied)
+
+
 def test_verifier_requires_the_v2_change_point_table(tmp_path):
     copied = copy_artifacts(tmp_path)
     (copied / "outputs/tables/change_point_results.csv").unlink()
@@ -212,6 +232,7 @@ def test_ci_runs_the_complete_reproducibility_gate():
         "python scripts/run_analysis.py",
         "python scripts/build_notebook.py",
         "python scripts/build_report_pdf.py",
+        "python scripts/build_report_pdf_zh.py",
         "python scripts/verify_artifacts.py",
         "git diff --exit-code",
     ):

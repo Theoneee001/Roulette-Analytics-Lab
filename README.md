@@ -4,7 +4,7 @@
 
 [Verified public Streamlit dashboard](https://roulette-analytics-lab.streamlit.app/)
 
-Roulette Analytics Lab is a reproducible Python portfolio project built from the mathematical questions studied in the University of Manchester MATH20062 Group 40 report. It turns a static academic investigation into a tested package, a deterministic analysis pipeline, an executed notebook, a CSV-backed PDF report, and a Streamlit dashboard. It asks how casino roulette rules determine expected value, what fixed-horizon evidence says about fairness, and how selection, repeated observation, changing probabilities, and uncertainty affect a decision.
+Roulette Analytics Lab is a reproducible Python portfolio project built from the mathematical questions studied in the University of Manchester MATH20062 Group 40 report. It turns a static academic investigation into a tested package, a deterministic analysis pipeline, an executed notebook, CSV-backed English and Chinese PDF reports, and a Streamlit dashboard. It asks how casino roulette rules determine expected value, what fixed-horizon evidence says about fairness, and how selection, repeated observation, changing probabilities, and uncertainty affect a decision.
 
 This is an educational probability project, not a system for making money from gambling. Under a fair wheel and standard casino payouts, every conventional bet has negative expected net return.
 
@@ -44,11 +44,12 @@ src/roulette_lab/               Tested probability, inference, and simulation pa
 scripts/run_analysis.py         Deterministic data and publication-output pipeline
 scripts/build_notebook.py       Rebuilds and executes the teaching notebook
 scripts/build_report_pdf.py     Builds the A4 technical report from Markdown and CSV data
+scripts/build_report_pdf_zh.py  Builds the Chinese A4 translation from the same CSV data
 data/                           Reproducible synthetic spin samples
 outputs/tables/                 Machine-readable headline results
 outputs/figures/                Publication figures
 notebooks/                      Executed end-to-end analysis notebook
-report/                         Long-form report in Markdown and PDF
+report/                         English and Chinese reports in Markdown and PDF
 docs/                           Blog, provenance, methods, AI workflow, and application material
 tests/                          Unit, integration, publication, and reproducibility tests
 ```

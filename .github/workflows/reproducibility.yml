@@ -42,6 +42,9 @@ jobs:
       - name: Build technical report
         run: python scripts/build_report_pdf.py
 
+      - name: Build Chinese technical report
+        run: python scripts/build_report_pdf_zh.py
+
       - name: Cross-check published artifacts
         run: python scripts/verify_artifacts.py
 

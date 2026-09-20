@@ -132,16 +132,6 @@ This division is practical. A notebook cell should not quietly define its own ex
 
 The Streamlit dashboard is an analytical interface rather than a casino imitation. It exposes wheel type, bet geometry, special rules, bankroll assumptions, seeds, probability inputs, and monitoring settings. Its live experiment state is immutable and deterministic: advancing one spin repeatedly produces the same history as advancing a batch from the same seed. That makes interaction testable and avoids a familiar product problem where the displayed controls look stable but hidden state drifts.
 
-## Application Value
-
-This project connects to the parts of my academic profile that are strongest and most relevant to postgraduate study. My Manchester mathematics training provided the probability, stochastic-process, and statistical foundations. The independent implementation turns those foundations into a working research artefact: mathematical statements become interfaces, tests, generated outputs, and an interactive product. The most important contribution is a correction in reasoning. Testing the hottest observed pocket as if it had been chosen beforehand gave an attractive but misleading result. Reframing the procedure around the selection step changed the conclusion.
-
-Programming with Python received 70 in my transcript. I see that mark as evidence of a useful foundation, not a reason to make an inflated claim. The repository shows how I have built on it: typed domain models, deterministic simulation, statistical computation with NumPy, pandas, and SciPy, automated tests, notebook execution, ReportLab publication, and a Streamlit interface. The work also shows AI and programming product thinking. AI-assisted drafting and review are documented in `docs/ai_workflow.md`, while acceptance depends on tests, generated data, source attribution, and visual checks rather than fluent text alone.
-
-For mathematics-oriented programmes, the strongest evidence is the care with assumptions and inference. For technology-management or data-and-analytics programmes, it is the translation of a model into a reproducible decision product with traceable outputs and adjustable controls. I can explain both sides without treating them as separate personalities. The same question drives them: what must be true for this number to deserve a decision?
-
-This project does not cancel transcript weaknesses or replace a complete academic record. It is one piece of evidence. It gives admissions reviewers something concrete to inspect alongside the transcript: a scoped research question, a record of what came from group work, tested technical decisions, and a product that asks the user to confront uncertainty. That is the right claim. Anything stronger would make the application narrative less credible.
-
 ## Limitations
 
 The synthetic biased data are educational examples. They do not estimate a casino wheel, and the numerical risk results assume a favourable probability precisely because the project needs a scenario in which stake-size trade-offs are visible. A fair European wheel at standard straight-up odds has no positive Kelly allocation. The application never claims otherwise.

@@ -29,7 +29,9 @@ The browser environment did not request reduced motion (`matchMedia('(prefers-re
 
 ## PDF check
 
-`report/technical_report.pdf` was rebuilt and rendered in full at 144 DPI. `pdfinfo` confirmed 14 unencrypted A4 pages. The report has 14 pages. A 14-page contact sheet and full-resolution pages 4 (dense probability equations), 5 (figures), 10 (posterior figure), and 14 (conclusion and references) were inspected. The review found no blank plots, clipped glyphs, orphan headings, unstable page numbering, or cropped references. Full rendered pages were 1191x1684 pixels.
+`report/technical_report.pdf` was rebuilt and rendered in full at 144 DPI. `pdfinfo` confirmed 13 unencrypted A4 pages. The English report has 13 pages after removal of the former application-value section. A 13-page contact sheet and full-resolution pages 4 (dense probability equations), 5 (figures), 10 (risk frontier), and 13 (limitations, conclusion, and references) were inspected.
+
+`report/technical_report_zh-CN.pdf` was rebuilt from the matching Chinese source and rendered in full at 144 DPI. `pdfinfo` confirmed 12 unencrypted A4 pages. A 12-page contact sheet and full-resolution pages 2 (headline table and executive summary), 9 (posterior decisions), and 12 (limitations, conclusion, and references) were inspected. Neither report contains the removed application-value section. The review found no blank plots, clipped glyphs, orphan headings, unstable page numbering, missing Chinese glyphs, or cropped references. Full rendered pages were 1191x1684 pixels.
 
 ## Online deployment status
 
