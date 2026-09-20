@@ -194,6 +194,64 @@ def test_canonical_deployment_is_linked_and_verified_public():
     assert "Verified public deployment" in checklist
 
 
+def test_task_seven_report_defers_post_source_archive_facts_to_manifest():
+    report = (ROOT / "task-7-report.md").read_text(encoding="utf-8")
+    assert "deliverables/V1_MANIFEST.txt" in report
+    assert "adjacent to the ZIP" in report
+    assert "cannot self-reference" in report
+    assert "source commit, archive SHA-256, and `unzip -t` result" in report
+    assert "334 passed tests" in report
+    assert not re.search(r"\b[0-9a-f]{40}\b", report)
+    assert not re.search(r"\b[0-9a-f]{64}\b", report)
+    assert "actions/runs/" not in report
+
+
+def test_anonymous_cookie_evidence_is_precise_and_qualified():
+    for relative in ("task-7-report.md", "docs/visual_qa.md"):
+        text = (ROOT / relative).read_text(encoding="utf-8")
+        lowered = text.lower()
+        assert "zero-cookie session" in lowered, relative
+        assert "retained only server-issued anonymous cookies" in lowered, relative
+        for cookie in ("streamlit_session", "_streamlit_csrf", "proxy-tracking-id"):
+            assert cookie in text, f"{relative}: {cookie}"
+        assert "as observed" in lowered, relative
+        assert "may vary" in lowered, relative
+
+
+def test_readme_names_the_released_v2_interface():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    tabs = ["Live Experiment", "Evidence", "Decision Risk", "Wheel Mechanics", "Methods"]
+    positions = [readme.index(f"**{tab}**") for tab in tabs]
+    assert positions == sorted(positions)
+    for stale in (
+        "Wheel & Bets",
+        "Fairness Lab",
+        "Sequential Lab",
+        "Bankroll Simulator",
+        "Methods & Limits",
+        "tested V1 interface",
+    ):
+        assert stale not in readme
+    assert "tested V2 interface" in readme
+
+
+def test_every_local_deliverables_matrix_link_exists():
+    checklist_path = ROOT / "docs/deliverables_checklist.md"
+    checklist = checklist_path.read_text(encoding="utf-8")
+    for expected in (
+        "../src/roulette_lab/analysis.py",
+        "../src/roulette_lab/bankroll.py",
+        "../tests/test_analysis.py",
+        "../tests/test_bankroll.py",
+    ):
+        assert expected in checklist
+    for target in re.findall(r"\[[^]]+\]\(([^)]+)\)", checklist):
+        if "://" in target or target.startswith("#"):
+            continue
+        resolved = (checklist_path.parent / target.split("#", 1)[0]).resolve()
+        assert resolved.exists(), f"Broken checklist link: {target}"
+
+
 def test_provenance_credits_every_author_and_records_source_checksum():
     text = (ROOT / "docs/provenance.md").read_text(encoding="utf-8")
     for author in [

@@ -93,7 +93,7 @@ Run the tests:
 
 ## Dashboard controls
 
-The five views move from rules to evidence to decisions. **Wheel & Bets** compares wheel type, bet geometry, payout, and special European rules. **Fairness Lab** accepts generated examples or strict CSV input, displays residuals, and contrasts global and post-selection-aware tests. **Sequential Lab** separates fixed-horizon evidence, a pre-specified likelihood-ratio monitor, and targeted CUSUM diagnostics. **Bankroll Simulator** exposes starting bankroll, stake, number of spins, path count, stop-loss, take-profit, table limit, payout assumptions, and staking strategy. **Methods & Limits** states the assumptions needed to interpret each output.
+The five views move from observation to evidence and decisions. **Live Experiment** runs the seeded wheel, records bankroll and spin history, and accepts strict CSV input. **Evidence** compares fixed-horizon, post-selection-aware, sequential, and CUSUM results. **Decision Risk** presents posterior edge uncertainty, Kelly outputs, and the CVaR risk frontier. **Wheel Mechanics** explains wheel types, bet geometry, payouts, and special European rules. **Methods** states the assumptions and limits needed to interpret every output.
 
 Custom payout odds are deliberately labelled hypothetical and simulation-only. They never overwrite the casino-standard analytical tables.
 
@@ -105,7 +105,7 @@ The report explains the difference between a fixed-horizon question, a post-sele
 
 ## Screenshots
 
-The screenshots below were generated from the tested V1 interface. The full interaction record is in [docs/visual_qa.md](docs/visual_qa.md).
+The screenshots below were generated from the tested V2 interface. The full interaction record is in [docs/visual_qa.md](docs/visual_qa.md).
 
 ### Desktop: bankroll paths and risk metrics
 

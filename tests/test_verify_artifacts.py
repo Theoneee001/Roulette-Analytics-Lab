@@ -103,6 +103,57 @@ def test_verifier_rejects_missing_verified_public_dashboard_wording(tmp_path):
         verify_artifacts(copied)
 
 
+def test_verifier_rejects_self_referential_release_metadata(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    task_report = copied / "task-7-report.md"
+    task_report.write_text(
+        task_report.read_text(encoding="utf-8")
+        + "\nArchive SHA-256: " + "a" * 64 + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(VerificationError, match="post-source release metadata"):
+        verify_artifacts(copied)
+
+
+def test_verifier_requires_observed_proxy_cookie_evidence(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    visual_qa = copied / "docs/visual_qa.md"
+    visual_qa.write_text(
+        visual_qa.read_text(encoding="utf-8").replace("proxy-tracking-id", "proxy-cookie"),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(VerificationError, match="proxy-tracking-id"):
+        verify_artifacts(copied)
+
+
+def test_verifier_rejects_legacy_readme_interface_names(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    readme = copied / "README.md"
+    readme.write_text(
+        readme.read_text(encoding="utf-8").replace("**Live Experiment**", "**Wheel & Bets**"),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(VerificationError, match="V2 tab set"):
+        verify_artifacts(copied)
+
+
+def test_verifier_rejects_broken_checklist_links(tmp_path):
+    copied = copy_artifacts(tmp_path)
+    checklist = copied / "docs/deliverables_checklist.md"
+    checklist.write_text(
+        checklist.read_text(encoding="utf-8").replace(
+            "../src/roulette_lab/analysis.py", "../src/roulette_lab/missing.py"
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(VerificationError, match="Broken checklist link"):
+        verify_artifacts(copied)
+
+
 def test_verifier_allows_negative_infinite_expected_log_growth(tmp_path):
     copied = copy_artifacts(tmp_path)
     path = copied / "outputs/tables/risk_frontier.csv"

@@ -354,6 +354,7 @@ def _verify_public_text(root: Path, tables: dict[str, pd.DataFrame]) -> None:
     _read(root / "docs" / "methodology_map.md", "methodology map")
     checklist = _read(root / "docs" / "deliverables_checklist.md", "deliverables checklist")
     visual_qa = _read(root / "docs" / "visual_qa.md", "visual QA record")
+    task_report = _read(root / "task-7-report.md", "Task 7 release report")
 
     report_words = _count_report_prose(report)
     _require(4_500 <= report_words <= 5_000, f"Technical report word count is {report_words}")
@@ -390,6 +391,59 @@ def _verify_public_text(root: Path, tables: dict[str, pd.DataFrame]) -> None:
     for phrase in manual_baseline_phrases:
         _require(phrase in readme, f"README baseline phrase mismatch: {phrase}")
         _require(phrase in checklist, f"Deliverables checklist baseline phrase mismatch: {phrase}")
+
+    v2_tabs = ("Live Experiment", "Evidence", "Decision Risk", "Wheel Mechanics", "Methods")
+    _require(
+        all(f"**{tab}**" in readme for tab in v2_tabs),
+        "README does not name the exact V2 tab set",
+    )
+    legacy_interface_phrases = (
+        "Wheel & Bets",
+        "Fairness Lab",
+        "Sequential Lab",
+        "Bankroll Simulator",
+        "Methods & Limits",
+        "tested V1 interface",
+    )
+    _require(
+        not any(phrase in readme for phrase in legacy_interface_phrases),
+        "README contains a legacy interface name instead of the V2 tab set",
+    )
+    _require("tested V2 interface" in readme, "README screenshots are not labelled V2")
+
+    release_manifest = "deliverables/V1_MANIFEST.txt"
+    _require(release_manifest in task_report, "Task 7 report does not defer to the external manifest")
+    _require("adjacent to the ZIP" in task_report, "Task 7 report does not locate the external manifest")
+    _require("cannot self-reference" in task_report, "Task 7 report lacks its self-reference explanation")
+    _require(
+        not re.search(r"\b[0-9a-f]{40}\b|\b[0-9a-f]{64}\b|actions/runs/", task_report),
+        "Task 7 report embeds post-source release metadata",
+    )
+
+    for text, label in ((task_report, "Task 7 report"), (visual_qa, "visual QA record")):
+        lowered = text.lower()
+        _require("zero-cookie session" in lowered, f"{label} lacks the zero-cookie starting state")
+        _require(
+            "retained only server-issued anonymous cookies" in lowered,
+            f"{label} does not describe the anonymous cookie retention",
+        )
+        for cookie in ("streamlit_session", "_streamlit_csrf", "proxy-tracking-id"):
+            _require(cookie in text, f"{label} is missing observed cookie {cookie}")
+        _require("as observed" in lowered and "may vary" in lowered, f"{label} overstates cookie stability")
+
+    for target in re.findall(r"\[[^]]+\]\(([^)]+)\)", checklist):
+        if "://" in target or target.startswith("#"):
+            continue
+        local_target = root / "docs" / target.split("#", 1)[0]
+        _require(local_target.exists(), f"Broken checklist link: {target}")
+    required_matrix_targets = (
+        "../src/roulette_lab/analysis.py",
+        "../src/roulette_lab/bankroll.py",
+        "../tests/test_analysis.py",
+        "../tests/test_bankroll.py",
+    )
+    for target in required_matrix_targets:
+        _require(target in checklist, f"Deliverables checklist is missing {target}")
 
     deployment_documents = (readme, application, checklist, visual_qa)
     deployment_url = "https://roulette-analytics-lab.streamlit.app/"
